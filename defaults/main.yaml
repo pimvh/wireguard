@@ -1,6 +1,9 @@
 ---
+
 server_domain: ""
 wg_config_dir: /etc/wireguard
+wg_port: ""
+
 endpoint_v4: "{{ ipv4 }}"
 endpoint_v6: "{{ ipv6 }}"
 
