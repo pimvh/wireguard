@@ -26,7 +26,7 @@ peers:
   - name: harry
     routed_ips: 0.0.0.0/0, ::/0         # the IPv4/IPv6 addresses you would like to route 
     dns: 1.1.1.1, 2606:4700:4700::1111  # the DNS your peer uses when using the VPN
-    force: false                        # can be skipped, wheter to force recreate, overwriting keys
+    force: false                        # can be skipped, whether to force recreate, overwriting keys
 ```
 
 The ansible networking module:
