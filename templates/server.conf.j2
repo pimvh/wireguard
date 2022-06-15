@@ -9,6 +9,6 @@ ListenPort = {{ wg_port }}
 [Peer]
 PresharedKey = {{ wg_preshared_key }}
 PublicKey = {{ peer.public_key }} 
-AllowedIPs = {{ wg_range_v4 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (1 + loop.index) | string ) | replace('/24', '/32') }}, {{ wg_range_v6 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (1 + loop.index) | string ) | replace('/64', '/128') }} 
+AllowedIPs = {{ wg_range_v4 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (1 + loop.index) | string ) | change_cidr_range_to('32') }}, {{ wg_range_v6 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (1 + loop.index) | string ) | change_cidr_range_to('128') }} 
 
 {% endfor %}

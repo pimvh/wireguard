@@ -9,9 +9,16 @@
     success_msg: "Required variable {{ item }} is defined"
   loop:
     - peers
-    - endpoint_v4
-    - endpoint_v6
     - server_domain
+
+- name: "Verify that required variables are defined"
+  assert: 
+    that:
+      - "{{ item }} is defined"
+      - "{{ item }} != None"
+    fail_msg: "{{ item }} needs to be set for the role to work"
+    success_msg: "Required variable {{ item }} is defined"
+  loop:
     - wg_port
 
 - name: install wireguard

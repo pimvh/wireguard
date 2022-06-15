@@ -45,8 +45,7 @@ roles:
 
 # TLDR/What will happen if I run this 
 
-- install wireguard 
+- install wireguard
 - generate server config/keys (on remote)
 - generate client config (locally)
 - save client configs (locally) 
-
