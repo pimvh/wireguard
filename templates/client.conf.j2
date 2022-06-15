@@ -1,0 +1,14 @@
+[Interface]
+PrivateKey = {{ peer.private_key }} 
+DNS = {{ peer.dns }}
+Address = {{ wg_range_v4 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (2 + peer_id) | string ) | replace('/24', '/32')  }}, {{ wg_range_v6 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (2 + peer_id) | string ) | replace('/64', '/128') }}
+
+[Peer]
+PublicKey = {{ wg_server_public_key }}
+PresharedKey = {{ wg_preshared_key }}
+AllowedIPs = {{ peer.routed_ips }}
+Endpoint = {{ server_domain }}:{{ wg_port }}
+
+# Send periodic keepalives to ensure connection stays up behind NAT.
+PersistentKeepalive = 25
+

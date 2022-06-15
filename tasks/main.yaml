@@ -1,0 +1,173 @@
+---
+- name: "Verify that required variables are defined"
+  assert:
+    that:
+      - "{{ item }} is defined"
+      - "{{ item }} | length > 0"
+      - "{{ item }} != None"
+    fail_msg: "{{ item }} needs to be set for the role to work"
+    success_msg: "Required variable {{ item }} is defined"
+  loop:
+    - peers
+    - endpoint_v4
+    - endpoint_v6
+    - server_domain
+
+- name: install wireguard
+  package:
+    name: wireguard
+    state: present
+  become: true
+
+- name: generate presharedkey (serverside)
+  command: wg genpsk
+  register: wg_preshared_key
+  check_mode: false
+  when: generate_preshared_key
+
+- name: check if wg config file exists
+  stat:
+    path: "{{ wg_config_dir }}/wg0.conf"
+  register: wg_config_file
+  become: true
+  when: not generate_preshared_key or not generate_server_keys
+
+- name: Check that wg config file exists
+  assert:
+    that:
+      - wg_config_file.stat.exists
+    fail_msg: Wg config file does not exist!
+    success_msg: Wg config file exists!
+  when: not generate_preshared_key or not generate_server_keys
+
+- name: get presharedkey from server
+  command: grep -i PresharedKey {{ wg_config_dir }}/wg0.conf
+  register: wg_preshared_key
+  become: true
+  check_mode: false
+  when: not generate_preshared_key
+
+- name: set presharedkey as fact
+  set_fact:
+    wg_preshared_key: '{{ wg_preshared_key.stdout | regex_search("PresharedKey\s?=\s?([a-zA-Z0-9]*=)", "\1") | first }}'
+
+- name: create and change permission on temporary key directory (serverside)
+  tempfile:
+    state: directory
+  become: true
+  check_mode: false
+  changed_when: false
+  register: tempfile
+
+- name: create privatekey file (serverside)
+  file:
+    name: "{{ tempfile.path }}/private.key"
+    state: touch
+    mode: u=rw,g=,o=
+  check_mode: false
+  become: true
+
+- name: get privatekey from server
+  command: grep -i PrivateKey {{ wg_config_dir }}/wg0.conf
+  register: wg_server_private_key
+  become: true
+  check_mode: false
+  when: not generate_server_keys
+
+- name: set privatekey as fact
+  set_fact:
+    wg_server_private_key: '{{ wg_server_private_key.stdout | regex_search("PrivateKey\s?=\s?([a-zA-Z0-9]*=)", "\1") | first }}'
+  when: not generate_server_keys
+
+- name: write private key to temp file
+  copy:
+    content: "{{ wg_server_private_key }}"
+    dest: "{{ tempfile.path }}/private.key"
+  become: true
+  check_mode: false
+  when: not generate_server_keys
+
+- name: configuring public key command
+  set_fact:
+    create_server_pubkey: '{{ "wg genkey | tee " + tempfile.path + "/private.key | wg pubkey" if generate_server_keys else "cat " +  tempfile.path + "/private.key | wg pubkey" }}'
+
+- name: generate private and public key (serverside)
+  shell: "{{ create_server_pubkey }}"
+  register: wg_server_public_key
+  become: true
+  check_mode: false
+
+- name: fetch wireguard private key (serverside)
+  command: "cat {{ tempfile.path }}/private.key"
+  check_mode: false
+  become: true
+  register: wg_new_server_private_key
+  when: generate_server_keys
+
+- name: save public key
+  set_fact:
+    wg_server_public_key: "{{ wg_server_public_key.stdout }}"
+
+- name: set private key as fact
+  set_fact:
+    wg_server_private_key: "{{ wg_new_server_private_key.stdout }}"
+  when: wg_new_client_private_key.stdout is defined
+
+- name: remove temporary directory (serverside)
+  file:
+    name: "{{ tempfile.path }}"
+    state: absent
+  check_mode: false
+  changed_when: false
+  become: true
+
+- name: Check that private, public key and presharedkey were set properly
+  assert:
+    that:
+      - wg_server_private_key
+      - wg_server_public_key
+      - wg_preshared_key
+    fail_msg: Keys are not properly defined!
+    success_msg: Keys were found continuing!
+
+- include_tasks: generate_client_keys.yaml
+  loop: "{{ peers }}"
+  loop_control:
+    index_var: peer_id
+    loop_var: peer
+
+- name: update peers
+  set_fact:
+    peers: "{{ new_peers }}"
+
+- name: move wireguard server config
+  template:
+    src: server.conf.j2
+    dest: "{{ wg_config_dir }}/wg0.conf"
+    mode: u=rw,g=,o=
+  become: true
+
+- name: create client wireguard config
+  template:
+    src: client.conf.j2
+    dest: "~/{{ inventory_hostname }}-{{ peer_id }}{% if peer.name %}-{{ peer.name }}{% endif %}.conf"
+    mode: u=rw,g=rw,o=
+  delegate_to: 127.0.0.1 # we want the config on our machine
+  loop: "{{ peers }}"
+  loop_control:
+    index_var: peer_id
+    loop_var: peer
+
+- name: check if wg is up
+  command: wg
+  become: true
+  register: current_wg
+
+- name: delete wireguard interface when up to avoid errors
+  command: wg-quick down wg0
+  when: current_wg.stdout
+  become: true
+
+- name: start wireguard interface
+  command: wg-quick up wg0
+  become: true

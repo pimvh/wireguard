@@ -1,0 +1,11 @@
+---
+server_domain: ""
+wg_config_dir: /etc/wireguard
+endpoint_v4: "{{ ipv4 }}"
+endpoint_v6: "{{ ipv6 }}"
+
+generate_server_keys: false
+generate_preshared_key: false
+
+peers: []
+
