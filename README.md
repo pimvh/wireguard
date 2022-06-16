@@ -43,7 +43,9 @@ roles:
 
 ```
 
-# TLDR/What will happen if I run this 
+Please not that this role does not take care of allowing wireguard through the firewall and other iptables/nftables config.
+
+# TLDR - What will happen if I run this 
 
 - install wireguard
 - generate server config/keys (on remote)
