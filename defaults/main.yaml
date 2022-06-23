@@ -1,14 +1,13 @@
 ---
-
 server_domain: ""
 wg_range_v4: ""
 wg_range_v6: ""
 wg_port: ""
 
 wg_config_dir: /etc/wireguard
+wg_client_config_dir: $HOME
 
-generate_server_keys: false
-generate_preshared_key: false
+generate_server_keys: true
+generate_preshared_key: true
 
 peers: []
-

@@ -1,7 +1,7 @@
 ---
 - name: set wg client_config as fact
   set_fact:
-    client_config_filename: "~/{{ inventory_hostname }}-{{ peer_id }}{% if peer.name %}-{{ peer.name }}{% endif %}.conf"
+    client_config_filename: "{{ wg_client_config_dir }}/{{ inventory_hostname }}-{{ peer_id }}{% if peer.name %}-{{ peer.name }}{% endif %}.conf"
 
 - name: check if file exists
   stat:
@@ -28,9 +28,10 @@
     state: touch
     mode: u=rw,g=,o=
   check_mode: false
+  when: force or not client_config
   delegate_to: 127.0.0.1
 
-- name: get privatekey
+- name: get private key
   command: "grep -i PrivateKey {{ client_config_filename }}"
   register: wg_client_private_key
   check_mode: false
@@ -39,26 +40,30 @@
 
 - name: set privatekey as fact
   set_fact:
-    wg_client_private_key: '{{ wg_client_private_key.stdout | regex_search("PrivateKey\s?=\s?([a-zA-Z0-9]*=)", "\1") | first }}'
+    wg_client_private_key: '{{ wg_client_private_key.stdout | regex_search("PrivateKey\s?=\s?([a-zA-Z0-9+/]*=)", "\1") | first }}'
   when: not force and client_config
 
 - name: write private key to temp file
   copy:
     content: "{{ wg_client_private_key }}"
     dest: "{{ tempfile.path }}/private.key"
+    mode: u=rw,g=,o=
   check_mode: false
   when: not force and client_config
   delegate_to: 127.0.0.1
 
 - name: configuring public key command
   set_fact:
-    create_client_pubkey: '{{ "wg genkey | tee " + tempfile.path + "/private.key | wg pubkey" if not force or client_config else "cat " + tempfile.path + "/private.key | wg pubkey" }}'
+    create_client_pubkey: '{{ "wg genkey | tee " + tempfile.path + "/private.key | wg pubkey" if force else "cat " + tempfile.path + "/private.key | wg pubkey" }}'
 
 - name: generate private and public key (clientside)
-  shell: "{{ create_client_pubkey }}"
+  shell: "set -o pipefail && {{ create_client_pubkey }}"
+  args:
+    executable: /bin/bash
   register: wg_client_public_key
   check_mode: false
   delegate_to: 127.0.0.1
+  changed_when: wg_client_public_key != ""
 
 - name: save client public key
   set_fact:
@@ -67,7 +72,7 @@
 - name: fetch wireguard client private key
   command: "cat {{ tempfile.path }}/private.key"
   register: wg_new_client_private_key
-  when: force or not client_config
+  when: force
   check_mode: false
   delegate_to: 127.0.0.1
 
@@ -91,5 +96,3 @@
 - name: Append new peer to list
   set_fact:
     new_peers: "{{ new_peers | default([]) + [ new_peer ] }}"
-
-

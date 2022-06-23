@@ -12,7 +12,7 @@
     - server_domain
 
 - name: "Verify that required variables are defined"
-  assert: 
+  assert:
     that:
       - "{{ item }} is defined"
       - "{{ item }} != None"
@@ -57,7 +57,9 @@
 
 - name: set presharedkey as fact
   set_fact:
-    wg_preshared_key: '{{ wg_preshared_key.stdout | regex_search("PresharedKey\s?=\s?([a-zA-Z0-9]*=)", "\1") | first }}'
+    wg_preshared_key: "{{ wg_preshared_key.stdout \
+      | regex_search(\"PresharedKey\\s?=\\s?([a-zA-Z0-9+/]*=)\", \"\\1\") \
+      | first }}"
 
 - name: create and change permission on temporary key directory (serverside)
   tempfile:
@@ -84,26 +86,33 @@
 
 - name: set privatekey as fact
   set_fact:
-    wg_server_private_key: '{{ wg_server_private_key.stdout | regex_search("PrivateKey\s?=\s?([a-zA-Z0-9]*=)", "\1") | first }}'
+    # line break does not work due to ' quotes
+    wg_server_private_key: "{{ wg_server_private_key.stdout \
+      | regex_search(\"PrivateKey\\s?=\\s?([a-zA-Z0-9+/]*=)\", \"\\1\") | first }}"
   when: not generate_server_keys
 
 - name: write private key to temp file
   copy:
     content: "{{ wg_server_private_key }}"
     dest: "{{ tempfile.path }}/private.key"
+    mode: u=rw,g=,o=
   become: true
   check_mode: false
   when: not generate_server_keys
 
 - name: configuring public key command
   set_fact:
-    create_server_pubkey: '{{ "wg genkey | tee " + tempfile.path + "/private.key | wg pubkey" if generate_server_keys else "cat " +  tempfile.path + "/private.key | wg pubkey" }}'
+    create_server_pubkey: "{{ 'wg genkey | tee ' + tempfile.path + '/private.key | wg pubkey' \
+      if generate_server_keys else 'cat ' +  tempfile.path + '/private.key | wg pubkey' }}"
 
 - name: generate private and public key (serverside)
-  shell: "{{ create_server_pubkey }}"
+  shell: "set -o pipefail && {{ create_server_pubkey }}"
+  args:
+    executable: /bin/bash
   register: wg_server_public_key
   become: true
   check_mode: false
+  changed_when: wg_server_public_key.stdout != ""
 
 - name: fetch wireguard private key (serverside)
   command: "cat {{ tempfile.path }}/private.key"
@@ -155,10 +164,12 @@
     mode: u=rw,g=,o=
   become: true
 
+# use notify instead
+
 - name: create client wireguard config
   template:
     src: client.conf.j2
-    dest: "~/{{ inventory_hostname }}-{{ peer_id }}{% if peer.name %}-{{ peer.name }}{% endif %}.conf"
+    dest: "{{ wg_client_config_dir }}/{{ inventory_hostname }}-{{ peer_id }}{% if peer.name %}-{{ peer.name }}{% endif %}.conf"
     mode: u=rw,g=rw,o=
   delegate_to: 127.0.0.1 # we want the config on our machine
   loop: "{{ peers }}"
@@ -170,6 +181,7 @@
   command: wg
   become: true
   register: current_wg
+  changed_when: false
 
 - name: delete wireguard interface when up to avoid errors
   command: wg-quick down wg0
@@ -179,3 +191,4 @@
 - name: start wireguard interface
   command: wg-quick up wg0
   become: true
+  when:
