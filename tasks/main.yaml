@@ -29,7 +29,7 @@
 
 - name: generate presharedkey (serverside)
   command: wg genpsk
-  register: wg_preshared_key
+  register: new_wg_preshared_key
   check_mode: false
   when: generate_preshared_key
 
@@ -57,9 +57,13 @@
 
 - name: set presharedkey as fact
   set_fact:
-    wg_preshared_key: "{{ wg_preshared_key.stdout \
-      | regex_search(\"PresharedKey\\s?=\\s?([a-zA-Z0-9+/]*=)\", \"\\1\") \
-      | first }}"
+    wg_preshared_key: '{{ wg_preshared_key.stdout | regex_search("PresharedKey\s?=\s?([a-zA-Z0-9+/]*=)", "\1") | first }}'
+  when: not generate_preshared_key
+
+- name: set presharedkey as fact
+  set_fact:
+    wg_preshared_key: '{{ new_wg_preshared_key.stdout }}'
+  when: generate_preshared_key
 
 - name: create and change permission on temporary key directory (serverside)
   tempfile:
@@ -86,9 +90,7 @@
 
 - name: set privatekey as fact
   set_fact:
-    # line break does not work due to ' quotes
-    wg_server_private_key: "{{ wg_server_private_key.stdout \
-      | regex_search(\"PrivateKey\\s?=\\s?([a-zA-Z0-9+/]*=)\", \"\\1\") | first }}"
+    wg_server_private_key: '{{ wg_server_private_key.stdout | regex_search("PrivateKey\s?=\s?([a-zA-Z0-9+/]*=)", "\1") | first }}'
   when: not generate_server_keys
 
 - name: write private key to temp file
