@@ -48,6 +48,8 @@ Please not that this role does not take care of allowing wireguard through the f
 # TLDR - What will happen if I run this 
 
 - install wireguard
-- generate server config/keys (on remote)
-- generate client config (locally)
-- save client configs (locally) 
+- generate server config/keys (on remote target)
+- generate client config where requested
+- save client configs where requested (can be set see vars)
+- bring the wg interface up (using systemd)
+- show wg config when requested
