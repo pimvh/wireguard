@@ -1,25 +1,32 @@
 ---
-- name: "Verify that required variables are defined"
+- name: Verify that required variables are defined
   assert:
     that:
       - "{{ item }} is defined"
       - "{{ item }} | length > 0"
       - "{{ item }} != None"
     fail_msg: "{{ item }} needs to be set for the role to work"
-    success_msg: "Required variable {{ item }} is defined"
+    success_msg: Required variable {{ item }} is defined
   loop:
     - peers
     - server_domain
 
-- name: "Verify that required variables are defined"
+- name: Verify that required variables are defined
   assert:
     that:
       - "{{ item }} is defined"
       - "{{ item }} != None"
     fail_msg: "{{ item }} needs to be set for the role to work"
-    success_msg: "Required variable {{ item }} is defined"
+    success_msg: Required variable {{ item }} is defined
   loop:
     - wg_port
+    - wg_range_v4
+    - wg_range_v6
+    - wg_config_dir
+    - wg_client_config_dir
+    - wg_client_config_storage_host
+    - generate_server_keys
+    - generate_preshared_key
 
 - name: install wireguard
   package:
@@ -53,6 +60,7 @@
   register: wg_preshared_key
   become: true
   check_mode: false
+  changed_when: false
   when: not generate_preshared_key
 
 - name: set presharedkey as fact
@@ -62,7 +70,7 @@
 
 - name: set presharedkey as fact
   set_fact:
-    wg_preshared_key: '{{ new_wg_preshared_key.stdout }}'
+    wg_preshared_key: "{{ new_wg_preshared_key.stdout }}"
   when: generate_preshared_key
 
 - name: create and change permission on temporary key directory (serverside)
@@ -86,6 +94,7 @@
   register: wg_server_private_key
   become: true
   check_mode: false
+  changed_when: false
   when: not generate_server_keys
 
 - name: set privatekey as fact
@@ -104,11 +113,11 @@
 
 - name: configuring public key command
   set_fact:
-    create_server_pubkey: "{{ 'wg genkey | tee ' + tempfile.path + '/private.key | wg pubkey' \
-      if generate_server_keys else 'cat ' +  tempfile.path + '/private.key | wg pubkey' }}"
+    create_server_pubkey: "{{ 'wg genkey | tee ' + tempfile.path + '/private.key | wg pubkey' if generate_server_keys else 'cat ' +  tempfile.path + '/private.key\
+      \ | wg pubkey' }}"
 
 - name: generate private and public key (serverside)
-  shell: "set -o pipefail && {{ create_server_pubkey }}"
+  shell: set -o pipefail && {{ create_server_pubkey }}
   args:
     executable: /bin/bash
   register: wg_server_public_key
@@ -117,7 +126,7 @@
   changed_when: wg_server_public_key.stdout != ""
 
 - name: fetch wireguard private key (serverside)
-  command: "cat {{ tempfile.path }}/private.key"
+  command: cat {{ tempfile.path }}/private.key
   check_mode: false
   become: true
   register: wg_new_server_private_key
@@ -166,31 +175,40 @@
     mode: u=rw,g=,o=
   become: true
 
-# use notify instead
-
 - name: create client wireguard config
   template:
     src: client.conf.j2
     dest: "{{ wg_client_config_dir }}/{{ inventory_hostname }}-{{ peer_id }}{% if peer.name %}-{{ peer.name }}{% endif %}.conf"
     mode: u=rw,g=rw,o=
-  delegate_to: 127.0.0.1 # we want the config on our machine
+  delegate_to: "{{ wg_client_config_storage_host }}"
   loop: "{{ peers }}"
   loop_control:
     index_var: peer_id
     loop_var: peer
 
+- name: Enable wireguard service
+  systemd:
+    name: wg-quick@wg0
+    enabled: true
+    masked: false
+
+- name: reload wireguard
+  systemd:
+    state: reloaded
+    daemon_reload: true
+    name: wg-quick@wg0
+  become: true
+
+- name: reset connection
+  meta: reset_connection
+
 - name: check if wg is up
   command: wg
   become: true
   register: current_wg
-  changed_when: false
+  when: wg_show
 
-- name: delete wireguard interface when up to avoid errors
-  command: wg-quick down wg0
-  when: current_wg.stdout
-  become: true
-
-- name: start wireguard interface
-  command: wg-quick up wg0
-  become: true
-  when:
+- name: show wg
+  debug:
+    msg: "{{ current_wg.stdout }}"
+  when: wg_show
