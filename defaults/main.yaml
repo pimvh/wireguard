@@ -1,5 +1,5 @@
 ---
-server_domain: ""
+domain: ""
 wg_range_v4: ""
 wg_range_v6: ""
 wg_port: ""

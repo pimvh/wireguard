@@ -9,15 +9,16 @@
     success_msg: Required variable {{ item }} is defined
   loop:
     - peers
-    - server_domain
+    - domain
 
 - name: Verify that required variables are defined
   assert:
     that:
       - "{{ item }} is defined"
       - "{{ item }} != None"
+      - "{{ item }} != ''"
     fail_msg: "{{ item }} needs to be set for the role to work"
-    success_msg: Required variable {{ item }} is defined
+    success_msg: "Required variable {{ item }} is defined"
   loop:
     - wg_port
     - wg_range_v4
@@ -34,11 +35,17 @@
     state: present
   become: true
 
-- name: generate presharedkey (serverside)
-  command: wg genpsk
-  register: new_wg_preshared_key
+- name: check wg is working
+  command: which wg
+  register: wg_command
   check_mode: false
-  when: generate_preshared_key
+  changed_when: false
+  ignore_errors: true
+
+- name: fail when wg command is not present
+  fail:
+    msg: The system does not have wireguard installed, cannot continue
+  when: 'not wg_command.rc == 0'
 
 - name: check if wg config file exists
   stat:
@@ -47,13 +54,11 @@
   become: true
   when: not generate_preshared_key or not generate_server_keys
 
-- name: Check that wg config file exists
-  assert:
-    that:
-      - wg_config_file.stat.exists
-    fail_msg: Wg config file does not exist!
-    success_msg: Wg config file exists!
-  when: not generate_preshared_key or not generate_server_keys
+- name: When no config file is found, force key generation
+  set_fact:
+    generate_preshared_key: true
+    generate_server_keys: true
+  when: not wg_config_file.stat.exists
 
 - name: get presharedkey from server
   command: grep -i PresharedKey {{ wg_config_dir }}/wg0.conf
@@ -61,6 +66,7 @@
   become: true
   check_mode: false
   changed_when: false
+  no_log: true
   when: not generate_preshared_key
 
 - name: set presharedkey as fact
@@ -68,86 +74,101 @@
     wg_preshared_key: '{{ wg_preshared_key.stdout | regex_search("PresharedKey\s?=\s?([a-zA-Z0-9+/]*=)", "\1") | first }}'
   when: not generate_preshared_key
 
+- name: generate presharedkey (serverside)
+  command: wg genpsk
+  register: new_wg_preshared_key
+  check_mode: false
+  when: generate_preshared_key
+
 - name: set presharedkey as fact
   set_fact:
     wg_preshared_key: "{{ new_wg_preshared_key.stdout }}"
+  no_log: true
   when: generate_preshared_key
 
-- name: create and change permission on temporary key directory (serverside)
-  tempfile:
-    state: directory
-  become: true
-  check_mode: false
-  changed_when: false
-  register: tempfile
+- name: create requested serverside keys
+  block:
+    - name: create and change permission on temporary key directory (serverside)
+      tempfile:
+        state: directory
+      become: true
+      check_mode: false
+      changed_when: false
+      register: tempfile
 
-- name: create privatekey file (serverside)
-  file:
-    name: "{{ tempfile.path }}/private.key"
-    state: touch
-    mode: u=rw,g=,o=
-  check_mode: false
-  become: true
+    - name: create privatekey file (serverside)
+      file:
+        name: "{{ tempfile.path }}/private.key"
+        state: touch
+        mode: u=rw,g=,o=
+      check_mode: false
+      become: true
 
-- name: get privatekey from server
-  command: grep -i PrivateKey {{ wg_config_dir }}/wg0.conf
-  register: wg_server_private_key
-  become: true
-  check_mode: false
-  changed_when: false
-  when: not generate_server_keys
+    - name: get privatekey from server
+      command: grep -i PrivateKey {{ wg_config_dir }}/wg0.conf
+      register: wg_server_private_key
+      become: true
+      check_mode: false
+      changed_when: false
+      no_log: true
+      when: not generate_server_keys
 
-- name: set privatekey as fact
-  set_fact:
-    wg_server_private_key: '{{ wg_server_private_key.stdout | regex_search("PrivateKey\s?=\s?([a-zA-Z0-9+/]*=)", "\1") | first }}'
-  when: not generate_server_keys
+    - name: set privatekey as fact
+      set_fact:
+        wg_server_private_key: '{{ wg_server_private_key.stdout | regex_search("PrivateKey\s?=\s?([a-zA-Z0-9+/]*=)", "\1") | first }}'
+      no_log: true
+      when: not generate_server_keys
 
-- name: write private key to temp file
-  copy:
-    content: "{{ wg_server_private_key }}"
-    dest: "{{ tempfile.path }}/private.key"
-    mode: u=rw,g=,o=
-  become: true
-  check_mode: false
-  when: not generate_server_keys
+    - name: write private key to temp file
+      copy:
+        content: "{{ wg_server_private_key }}"
+        dest: "{{ tempfile.path }}/private.key"
+        mode: u=rw,g=,o=
+      become: true
+      check_mode: false
+      no_log: true
+      when: not generate_server_keys
 
-- name: configuring public key command
-  set_fact:
-    create_server_pubkey: "{{ 'wg genkey | tee ' + tempfile.path + '/private.key | wg pubkey' if generate_server_keys else 'cat ' +  tempfile.path + '/private.key\
-      \ | wg pubkey' }}"
+    - name: configuring public key command
+      set_fact:
+        create_server_pubkey: "{{ 'wg genkey | tee ' + tempfile.path + '/private.key | wg pubkey' if generate_server_keys else 'cat ' +  tempfile.path + '/private.key\
+          \ | wg pubkey' }}"
 
-- name: generate private and public key (serverside)
-  shell: set -o pipefail && {{ create_server_pubkey }}
-  args:
-    executable: /bin/bash
-  register: wg_server_public_key
-  become: true
-  check_mode: false
-  changed_when: wg_server_public_key.stdout != ""
+    - name: generate private and public key (serverside)
+      shell: set -o pipefail && {{ create_server_pubkey }}
+      args:
+        executable: /bin/bash
+      register: wg_server_public_key
+      become: true
+      check_mode: false
+      changed_when: wg_server_public_key.stdout != ""
 
-- name: fetch wireguard private key (serverside)
-  command: cat {{ tempfile.path }}/private.key
-  check_mode: false
-  become: true
-  register: wg_new_server_private_key
-  when: generate_server_keys
+    - name: fetch wireguard private key (serverside)
+      command: "cat {{ tempfile.path }}/private.key"
+      check_mode: false
+      become: true
+      register: wg_new_server_private_key
+      no_log: true
+      when: generate_server_keys
 
-- name: save public key
-  set_fact:
-    wg_server_public_key: "{{ wg_server_public_key.stdout }}"
+    - name: save public key
+      set_fact:
+        wg_server_public_key: "{{ wg_server_public_key.stdout }}"
 
-- name: set private key as fact
-  set_fact:
-    wg_server_private_key: "{{ wg_new_server_private_key.stdout }}"
-  when: wg_new_client_private_key.stdout is defined
+    - name: set new private key as fact
+      set_fact:
+        wg_server_private_key: "{{ wg_new_server_private_key.stdout }}"
+          # no_log: true
+      when: generate_server_keys
 
-- name: remove temporary directory (serverside)
-  file:
-    name: "{{ tempfile.path }}"
-    state: absent
-  check_mode: false
-  changed_when: false
-  become: true
+  always:
+    - name: remove temporary directory (serverside)
+      file:
+        name: "{{ tempfile.path }}"
+        state: absent
+      check_mode: false
+      changed_when: false
+      become: true
 
 - name: Check that private, public key and presharedkey were set properly
   assert:
@@ -191,6 +212,7 @@
     name: wg-quick@wg0
     enabled: true
     masked: false
+  become: true
 
 - name: reload wireguard
   systemd:

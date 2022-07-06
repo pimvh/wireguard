@@ -8,7 +8,7 @@ Address = {{ wg_range_v4 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (
 PublicKey = {{ wg_server_public_key }}
 PresharedKey = {{ wg_preshared_key }}
 AllowedIPs = {{ peer.routed_ips }}
-Endpoint = {{ server_domain }}:{{ wg_port }}
+Endpoint = {{ domain }}:{{ wg_port }}
 
 # Send periodic keepalives to ensure connection stays up behind NAT.
 PersistentKeepalive = 25
