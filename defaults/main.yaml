@@ -14,4 +14,7 @@ wg_client_config_storage_host: localhost
 generate_server_keys: false
 generate_preshared_key: false
 
+wg_dns: ""
+wg_routed_ips: ""
+
 peers: []

@@ -24,8 +24,8 @@ The structure of the peer variable is as follows (very close to wireguard config
 ```
 peers:
   - name: harry
-    routed_ips: 0.0.0.0/0, ::/0         # the IPv4/IPv6 addresses you would like to route 
-    dns: 1.1.1.1, 2606:4700:4700::1111  # the DNS your peer uses when using the VPN
+    routed_ips: 0.0.0.0/0, ::/0         # the IPv4/IPv6 addresses you would like to route (if this is not defined wg_routed_ips is used)
+    dns: 1.1.1.1, 2606:4700:4700::1111  # the DNS your peer uses when using the VPN (if this is not defined wg_dns is used)
     force: false                        # can be skipped, whether to force recreate, overwriting keys
 ```
 
