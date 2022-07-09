@@ -190,6 +190,7 @@
 - name: update peers
   set_fact:
     peers: "{{ new_peers }}"
+  no_log: true
 
 - name: move wireguard server config
   template:
@@ -209,13 +210,18 @@
     index_var: peer_id
     loop_var: peer
 
-- name: Enable/restart wireguard service
+- name: Stop wireguard service
+  systemd:
+    name: wg-quick@wg0
+    state: stopped
+  become: true
+
+- name: Start wireguard service
   systemd:
     name: wg-quick@wg0
     enabled: yes
-    daemon_reload: true
     masked: false
-    state: restarted
+    state: started
   become: true
 
 - name: reset connection

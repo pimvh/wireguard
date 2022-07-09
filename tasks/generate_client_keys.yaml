@@ -61,7 +61,7 @@
 
     - name: configuring public key command
       set_fact:
-        create_client_pubkey: '{{ "wg genkey | tee " + tempfile.path + "/private.key | wg pubkey" if force else "cat " + tempfile.path + "/private.key | wg pubkey"
+        create_client_pubkey: '{{ "wg genkey | tee " + tempfile.path + "/private.key | wg pubkey" if force or not client_config else "cat " + tempfile.path + "/private.key | wg pubkey"
           }}'
 
     - name: generate private and public key (clientside)
@@ -81,7 +81,7 @@
       command: cat {{ tempfile.path }}/private.key
       register: wg_new_client_private_key
       no_log: true
-      when: force
+      when: force or not client_config
       check_mode: false
       delegate_to: "{{ wg_client_config_storage_host }}"
 
