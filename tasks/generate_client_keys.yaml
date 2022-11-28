@@ -1,22 +1,26 @@
 ---
-- name: set wg client_config as fact
+- name: Set wg client_config as fact
   set_fact:
     client_config_filename: "{{ wg_client_config_dir }}/{{ inventory_hostname }}-{{ peer_id }}{% if peer.name %}-{{ peer.name }}{% endif %}.conf"
 
-- name: check if file exists
+- name: Check if file exists
   stat:
     path: "{{ client_config_filename }}"
   register: client_config
   delegate_to: "{{ wg_client_config_storage_host }}"
 
-- name: set client config generator parameters
+- name: Set client config generator parameters
   set_fact:
     client_config: "{{ client_config.stat.exists }}"
     force: "{{ peer.force | default(false) }}"
 
-- name: generate client config
+- name: Set variable for when to generate client keys
+  set_fact:
+    regenerate_client_keys: "{{ force or not client_config }}"
+
+- name: Generate client config
   block:
-    - name: create and change permission on temporary key directory (clientside)
+    - name: Create and change permission on temporary key directory (clientside)
       tempfile:
         state: directory
       check_mode: false
@@ -24,75 +28,81 @@
       delegate_to: "{{ wg_client_config_storage_host }}"
       register: tempfile
 
-    - name: create privatekey file (clientside)
-      file:
-        name: "{{ tempfile.path }}/private.key"
-        state: touch
-        mode: u=rw,g=,o=
-      check_mode: false
-      when: force or not client_config
-      delegate_to: "{{ wg_client_config_storage_host }}"
+    - name: Fetch current private key and public key (client_side)
+      block:
+        - name: Get private_key from client
+          include_tasks:
+            file: find_wg_key.yaml
+          vars:
+            key: "PrivateKey"
+            key_file: "{{ client_config_filename }}"
+            key_local: true
+            key_var: wg_client_private_key
 
-    - name: get private key
-      command: grep -i PrivateKey {{ client_config_filename }}
-      register: wg_client_private_key
-      check_mode: false
-      changed_when: false
-      when: not force and client_config
-      no_log: true
-      delegate_to: "{{ wg_client_config_storage_host }}"
+        - name: Write private key to temp file
+          copy:
+            content: "{{ wg_client_private_key }}"
+            dest: "{{ tempfile.path }}/private.key"
+            mode: u=rw,g=,o=
+          check_mode: false
+          changed_when: false
+          no_log: true
+          when: not regenerate_client_keys
+          delegate_to: "{{ wg_client_config_storage_host }}"
 
-    - name: set privatekey as fact
-      set_fact:
-        wg_client_private_key: '{{ wg_client_private_key.stdout | regex_search("PrivateKey\s?=\s?([a-zA-Z0-9+/]*=)", "\1") | first }}'
-      no_log: true
-      when: not force and client_config
+        - name: Get public_key from client
+          include_tasks:
+            file: find_wg_key.yaml
+            apply:
+              delegate_to: "{{ wg_client_config_storage_host }}"
+          vars:
+            key: "PublicKey"
+            key_file: "{{ client_config_filename }}"
+            key_local: true
+            key_var: wg_client_public_key
+      when: not regenerate_client_keys
 
-    - name: write private key to temp file
-      copy:
-        content: "{{ wg_client_private_key }}"
-        dest: "{{ tempfile.path }}/private.key"
-        mode: u=rw,g=,o=
-      check_mode: false
-      changed_when: false
-      no_log: true
-      when: not force and client_config
-      delegate_to: "{{ wg_client_config_storage_host }}"
+    - name: Generate keys and public key (client_side)
+      block:
+        - name: Create privatekey file (clientside)
+          file:
+            name: "{{ tempfile.path }}/private.key"
+            state: touch
+            mode: u=rw,g=,o=
+          check_mode: false
+          delegate_to: "{{ wg_client_config_storage_host }}"
 
-    - name: configuring public key command
-      set_fact:
-        create_client_pubkey: '{{ "wg genkey | tee " + tempfile.path + "/private.key | wg pubkey" if force or not client_config else "cat " + tempfile.path + "/private.key | wg pubkey"
-          }}'
+        - name: Generate private and public key (clientside)
+          shell: 'set -o pipefail && {{ "wg genkey | tee " + tempfile.path + "/private.key | wg pubkey" }}'
+          args:
+            executable: /bin/bash
+          register: new_wg_client_public_key
+          check_mode: false
+          delegate_to: "{{ wg_client_config_storage_host }}"
+          changed_when: new_wg_client_public_key != ""
 
-    - name: generate private and public key (clientside)
-      shell: set -o pipefail && {{ create_client_pubkey }}
-      args:
-        executable: /bin/bash
-      register: wg_client_public_key
-      check_mode: false
-      delegate_to: "{{ wg_client_config_storage_host }}"
-      changed_when: wg_client_public_key != ""
+        - name: Save client public key
+          set_fact:
+            wg_client_public_key: "{{ new_wg_client_public_key.stdout }}"
 
-    - name: save client public key
-      set_fact:
-        wg_client_public_key: "{{ wg_client_public_key.stdout }}"
+        - name: Fetch wireguard client private key
+          command: cat {{ tempfile.path }}/private.key
+          register: wg_new_client_private_key
+          no_log: true
+          when: regenerate_client_keys
+          check_mode: false
+          changed_when: false
+          delegate_to: "{{ wg_client_config_storage_host }}"
 
-    - name: fetch wireguard client private key
-      command: cat {{ tempfile.path }}/private.key
-      register: wg_new_client_private_key
-      no_log: true
-      when: force or not client_config
-      check_mode: false
-      delegate_to: "{{ wg_client_config_storage_host }}"
-
-    - name: set client private key as fact
-      set_fact:
-        wg_client_private_key: "{{ wg_new_client_private_key.stdout }}"
-      no_log: true
-      when: wg_new_client_private_key.stdout is defined
+        - name: Set client private key as fact
+          set_fact:
+            wg_client_private_key: "{{ wg_new_client_private_key.stdout }}"
+          no_log: true
+          when: wg_new_client_private_key.stdout is defined
+      when: regenerate_client_keys
 
   always:
-    - name: remove temporary directory (clientside)
+    - name: Remove temporary directory (clientside)
       file:
         name: "{{ tempfile.path }}"
         state: absent
@@ -100,12 +110,12 @@
       changed_when: false
       delegate_to: "{{ wg_client_config_storage_host }}"
 
-- name: append client private and public key to the current item
+- name: Append client private and public key to the current item
   set_fact:
-    new_peer: "{{ peer | combine ({'private_key' : wg_client_private_key, 'public_key' : wg_client_public_key }) }}"
+    new_peer: "{{ peer | combine({ 'private_key' : wg_client_private_key, 'public_key' : wg_client_public_key }) }}"
   no_log: true
 
 - name: Append new peer to list
   set_fact:
-    new_peers: "{{ new_peers | default([]) + [ new_peer ] }}"
+    new_peers: "{{ new_peers | default([]) + [new_peer] }}"
   no_log: true

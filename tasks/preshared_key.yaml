@@ -1,0 +1,30 @@
+---
+- name: Get presharedkey from server
+  command: grep -i PresharedKey {{ wg_config_dir }}/{{ interface }}.conf
+  register: wg_preshared_key
+  become: true
+  check_mode: false
+  changed_when: false
+  no_log: true
+  when: not generate_preshared_key
+
+- name: Show preshard key fact
+  debug:
+    msg: "{{ generate_preshared_key }}"
+
+- name: Set presharedkey as fact
+  set_fact:
+    wg_preshared_key: '{{ wg_preshared_key.stdout | regex_search("PresharedKey\s?=\s?([a-zA-Z0-9+/]*=)", "\1") | first }}'
+  when: not generate_preshared_key
+
+- name: Generate presharedkey (serverside)
+  command: wg genpsk
+  register: new_wg_preshared_key
+  check_mode: false
+  when: generate_preshared_key
+
+- name: Set presharedkey as fact
+  set_fact:
+    wg_preshared_key: "{{ new_wg_preshared_key.stdout }}"
+  no_log: true
+  when: generate_preshared_key

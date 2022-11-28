@@ -1,14 +1,15 @@
 {{ ansible_managed | comment }}
 [Interface]
-Address = {{ wg_range_v4 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr('1') }}, {{ wg_range_v6 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr('1') }} 
+Address = {{ wg_range_v4 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr('1') }}, {{ wg_range_v6 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr('1') }}
 PrivateKey = {{ wg_server_private_key }}
+#PublicKey = {{ wg_server_public_key }}
 ListenPort = {{ wg_port }}
 
 {% for peer in peers %}
 ## {% if peer.name is defined %}{{ peer.name }}{% else %}{{ loop.index0 }}{% endif %} ##
 [Peer]
 PresharedKey = {{ wg_preshared_key }}
-PublicKey = {{ peer.public_key }} 
-AllowedIPs = {{ wg_range_v4 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (1 + loop.index) | string ) | change_cidr_range_to('32') }}, {{ wg_range_v6 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (1 + loop.index) | string ) | change_cidr_range_to('128') }} 
+PublicKey = {{ peer.public_key }}
+AllowedIPs = {{ wg_range_v4 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (1 + loop.index) | string ) | change_cidr_range_to('32') }}, {{ wg_range_v6 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (1 + loop.index) | string ) | change_cidr_range_to('128') }}
 
 {% endfor %}

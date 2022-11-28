@@ -1,0 +1,33 @@
+---
+- name: Verify that required variables are defined
+  assert:
+    that:
+      - "{{ item }} is defined"
+      - "{{ item }} | length > 0"
+      - "{{ item }} != None"
+    fail_msg: "{{ item }} needs to be set for the role to work"
+    success_msg: Required variable {{ item }} is defined
+  loop:
+    - wg_interfaces[interface].peers
+    - wg_interfaces[interface].domain
+
+- name: Verify that required variables are defined
+  assert:
+    that:
+      - "{{ item }} is defined"
+      - "{{ item }} != None"
+      - "{{ item }} != ''"
+    fail_msg: "{{ item }} needs to be set for the role to work"
+    success_msg: "Required variable {{ item }} is defined"
+  loop:
+    - wg_interfaces[interface].wg_port
+    - wg_interfaces[interface].wg_range_v4
+    - wg_interfaces[interface].wg_range_v6
+    - wg_interfaces[interface].wg_client_config_storage_host
+    - wg_interfaces[interface].generate_server_keys
+    - wg_interfaces[interface].generate_preshared_key
+    - wg_interfaces[interface].wg_dns
+    - wg_interfaces[interface].wg_routed_ips
+    # Have defaults
+    # - wg_interfaces[interface].wg_config_dir
+    # - wg_interfaces[interface].wg_client_config_dir

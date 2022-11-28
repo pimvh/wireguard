@@ -1,6 +1,7 @@
 {{ ansible_managed | comment }}
 [Interface]
-PrivateKey = {{ peer.private_key }} 
+PrivateKey = {{ peer.private_key }}
+#PublicKey = {{ peer.public_key }}
 DNS = {% if peer.dns is defined %}{{ peer.dns }}{% else %}{{ wg_dns }}{% endif +%}
 Address = {{ wg_range_v4 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (2 + peer_id) | string ) | change_cidr_range_to('32')  }}, {{ wg_range_v6 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (2 + peer_id) | string ) | change_cidr_range_to('128') }}
 

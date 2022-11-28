@@ -1,0 +1,30 @@
+---
+- name: Stop wireguard service
+  systemd:
+    name: wg-quick@wg0
+    state: stopped
+  become: true
+  listen: restart wireguard service wg0
+
+- name: Start wireguard service
+  systemd:
+    name: wg-quick@wg0
+    enabled: true
+    state: started
+  become: true
+  listen: restart wireguard service wg0
+
+- name: Stop wireguard service
+  systemd:
+    name: wg-quick@wg1
+    state: stopped
+  become: true
+  listen: restart wireguard service wg1
+
+- name: Start wireguard service
+  systemd:
+    name: wg-quick@wg1
+    enabled: true
+    state: started
+  become: true
+  listen: restart wireguard service wg1
