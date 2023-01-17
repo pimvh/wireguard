@@ -101,7 +101,7 @@
     dest: "{{ wg_config_dir }}/wg0.conf"
     mode: u=rw,g=,o=
   become: true
-  notify: restart wireguard service
+  notify: restart wireguard service wg0
 
 - name: Create client wireguard configs
   template:
@@ -109,7 +109,7 @@
     dest: "{{ wg_client_config_dir }}/{{ inventory_hostname }}-{{ peer_id }}{% if peer.name %}-{{ peer.name }}{% endif %}.conf"
     mode: u=rw,g=rw,o=
   delegate_to: "{{ wg_client_config_storage_host }}"
-  notify: restart wireguard service
+  notify: restart wireguard service wg0
   loop: "{{ peers }}"
   loop_control:
     index_var: peer_id
