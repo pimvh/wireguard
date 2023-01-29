@@ -1,27 +1,27 @@
 ---
 - name: Set wg client_config as fact
-  set_fact:
+  ansible.builtin.set_fact:
     client_config_filename: "{{ wg_client_config_dir }}/{{ inventory_hostname }}-{{ peer_id }}{% if peer.name %}-{{ peer.name }}{% endif %}.conf"
 
 - name: Check if file exists
-  stat:
+  ansible.builtin.stat:
     path: "{{ client_config_filename }}"
   register: client_config
   delegate_to: "{{ wg_client_config_storage_host }}"
 
 - name: Set client config generator parameters
-  set_fact:
+  ansible.builtin.set_fact:
     client_config: "{{ client_config.stat.exists }}"
     force: "{{ peer.force | default(false) }}"
 
 - name: Set variable for when to generate client keys
-  set_fact:
+  ansible.builtin.set_fact:
     regenerate_client_keys: "{{ force or not client_config }}"
 
 - name: Generate client config
   block:
     - name: Create and change permission on temporary key directory (clientside)
-      tempfile:
+      ansible.builtin.tempfile:
         state: directory
       check_mode: false
       changed_when: false
@@ -31,7 +31,7 @@
     - name: Fetch current private key and public key (client_side)
       block:
         - name: Get private_key from client
-          include_tasks:
+          ansible.builtin.include_tasks:
             file: find_wg_key.yaml
           vars:
             key: "PrivateKey"
@@ -40,7 +40,7 @@
             key_var: wg_client_private_key
 
         - name: Write private key to temp file
-          copy:
+          ansible.builtin.copy:
             content: "{{ wg_client_private_key }}"
             dest: "{{ tempfile.path }}/private.key"
             mode: u=rw,g=,o=
@@ -51,7 +51,7 @@
           delegate_to: "{{ wg_client_config_storage_host }}"
 
         - name: Get public_key from client
-          include_tasks:
+          ansible.builtin.include_tasks:
             file: find_wg_key.yaml
             apply:
               delegate_to: "{{ wg_client_config_storage_host }}"
@@ -65,7 +65,7 @@
     - name: Generate keys and public key (client_side)
       block:
         - name: Create privatekey file (clientside)
-          file:
+          ansible.builtin.file:
             name: "{{ tempfile.path }}/private.key"
             state: touch
             mode: u=rw,g=,o=
@@ -73,7 +73,7 @@
           delegate_to: "{{ wg_client_config_storage_host }}"
 
         - name: Generate private and public key (clientside)
-          shell: 'set -o pipefail && {{ "wg genkey | tee " + tempfile.path + "/private.key | wg pubkey" }}'
+          ansible.builtin.shell: 'set -o pipefail && {{ "wg genkey | tee " + tempfile.path + "/private.key | wg pubkey" }}'
           args:
             executable: /bin/bash
           register: new_wg_client_public_key
@@ -82,11 +82,11 @@
           changed_when: new_wg_client_public_key != ""
 
         - name: Save client public key
-          set_fact:
+          ansible.builtin.set_fact:
             wg_client_public_key: "{{ new_wg_client_public_key.stdout }}"
 
         - name: Fetch wireguard client private key
-          command: cat {{ tempfile.path }}/private.key
+          ansible.builtin.command: cat {{ tempfile.path }}/private.key
           register: wg_new_client_private_key
           no_log: true
           when: regenerate_client_keys
@@ -95,7 +95,7 @@
           delegate_to: "{{ wg_client_config_storage_host }}"
 
         - name: Set client private key as fact
-          set_fact:
+          ansible.builtin.set_fact:
             wg_client_private_key: "{{ wg_new_client_private_key.stdout }}"
           no_log: true
           when: wg_new_client_private_key.stdout is defined
@@ -103,7 +103,7 @@
 
   always:
     - name: Remove temporary directory (clientside)
-      file:
+      ansible.builtin.file:
         name: "{{ tempfile.path }}"
         state: absent
       check_mode: false
@@ -111,11 +111,11 @@
       delegate_to: "{{ wg_client_config_storage_host }}"
 
 - name: Append client private and public key to the current item
-  set_fact:
+  ansible.builtin.set_fact:
     new_peer: "{{ peer | combine({ 'private_key' : wg_client_private_key, 'public_key' : wg_client_public_key }) }}"
   no_log: true
 
 - name: Append new peer to list
-  set_fact:
+  ansible.builtin.set_fact:
     new_peers: "{{ new_peers | default([]) + [new_peer] }}"
   no_log: true

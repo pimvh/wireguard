@@ -1,6 +1,6 @@
 ---
 - name: Get {{ key }} key from machine
-  command: "grep -i {{ key }} {{ key_file }}"
+  ansible.builtin.command: "grep -i {{ key }} {{ key_file }}"
   register: found_key
   become: "{{ true if not key_local else false }}"
   check_mode: false
@@ -9,11 +9,11 @@
   no_log: true
 
 - name: Set {{ key }} key as fact
-  set_fact:
+  ansible.builtin.set_fact:
     found_key: '{{ found_key.stdout | regex_search(key | string + "\s?=\s?([a-zA-Z0-9+/]*=)", "\1") | first }}'
   no_log: true
 
 - name: Set {{ key }} key as fact
-  set_fact: >
+  ansible.builtin.set_fact: >
     {{ key_var }}={{ found_key }}
   no_log: true

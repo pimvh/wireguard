@@ -2,7 +2,7 @@
 - name: Create requested serverside keys
   block:
     - name: Create and change permission on temporary key directory (serverside)
-      tempfile:
+      ansible.builtin.tempfile:
         state: directory
       become: true
       check_mode: false
@@ -10,7 +10,7 @@
       register: tempfile
 
     - name: Create privatekey file (serverside)
-      file:
+      ansible.builtin.file:
         name: "{{ tempfile.path }}/private.key"
         state: touch
         mode: u=rw,g=,o=
@@ -19,7 +19,7 @@
       become: true
 
     - name: Get privatekey from server
-      include_tasks:
+      ansible.builtin.include_tasks:
         file: find_wg_key.yaml
       vars:
         key: "PrivateKey"
@@ -29,7 +29,7 @@
       when: not generate_server_keys
 
     - name: Write private key to temp file
-      copy:
+      ansible.builtin.copy:
         content: "{{ wg_server_private_key }}"
         dest: "{{ tempfile.path }}/private.key"
         mode: u=rw,g=,o=
@@ -40,7 +40,7 @@
       when: not generate_server_keys
 
     - name: Get PublicKey from server
-      include_tasks:
+      ansible.builtin.include_tasks:
         file: find_wg_key.yaml
       vars:
         key: "PublicKey"
@@ -50,7 +50,7 @@
       when: not generate_server_keys
 
     - name: Generate private and public key (serverside)
-      shell: "set -o pipefail && {{ 'wg genkey | tee ' + tempfile.path + '/private.key | wg pubkey' }}"
+      ansible.builtin.shell: "set -o pipefail && {{ 'wg genkey | tee ' + tempfile.path + '/private.key | wg pubkey' }}"
       args:
         executable: /bin/bash
       register: wg_new_server_public_key
@@ -60,7 +60,7 @@
       when: generate_server_keys
 
     - name: Fetch wireguard private key (serverside)
-      command: "cat {{ tempfile.path }}/private.key"
+      ansible.builtin.command: "cat {{ tempfile.path }}/private.key"
       check_mode: false
       become: true
       register: wg_new_server_private_key
@@ -68,19 +68,19 @@
       when: generate_server_keys
 
     - name: Save public key
-      set_fact:
+      ansible.builtin.set_fact:
         wg_server_public_key: "{{ wg_new_server_public_key.stdout }}"
       when: generate_server_keys
 
     - name: Set new private key as fact
-      set_fact:
+      ansible.builtin.set_fact:
         wg_server_private_key: "{{ wg_new_server_private_key.stdout }}"
       no_log: true
       when: generate_server_keys
 
   always:
     - name: Remove temporary directory (serverside)
-      file:
+      ansible.builtin.file:
         name: "{{ tempfile.path }}"
         state: absent
       check_mode: false

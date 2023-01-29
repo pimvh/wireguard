@@ -6,7 +6,7 @@
       delegate_to: localhost
 
 - name: Rescope variables for readability
-  set_fact:
+  ansible.builtin.set_fact:
     peers: "{{ wg_interfaces[interface].peers }}"
     domain: "{{ wg_interfaces[interface].domain }}"
     wg_port: "{{ wg_interfaces[interface].wg_port }}"
@@ -22,13 +22,13 @@
     wg_routed_ips: "{{ wg_interfaces[interface].wg_routed_ips }}"
 
 - name: Install wireguard
-  package:
+  ansible.builtin.package:
     name: wireguard
     state: present
   become: true
 
 - name: Check wg is working
-  command: which wg
+  ansible.builtin.command: which wg
   register: wg_command
   check_mode: false
   changed_when: false
@@ -37,12 +37,12 @@
 - name: Check command on both wireguard hosts
   block:
     - name: Fail when wg command is not present
-      fail:
+      ansible.builtin.fail:
         msg: The system does not have wireguard installed, cannot continue
       when: not wg_command.rc == 0
 
     - name: Check if wg is working on control host
-      command: which wg
+      ansible.builtin.command: which wg
       register: wg_command_controller
       check_mode: false
       changed_when: false
@@ -55,13 +55,13 @@
       when: not wg_command_controller.rc == 0
 
 - name: Check if wg config file exists
-  stat:
+  ansible.builtin.stat:
     path: "{{ wg_config_dir }}/{{ interface }}.conf"
   register: wg_config_file
   become: true
 
 - name: When no config file is found, force key generation
-  set_fact:
+  ansible.builtin.set_fact:
     generate_preshared_key: true
     generate_server_keys: true
   when: not wg_config_file.stat.exists
@@ -75,7 +75,7 @@
     file: "serverside_keys.yaml"
 
 - name: Check that private, public key and presharedkey were set properly
-  assert:
+  ansible.builtin.assert:
     that:
       - wg_server_private_key
       - wg_server_public_key
@@ -84,19 +84,19 @@
     success_msg: Keys were found continuing!
 
 - name: Generate Client keys
-  include_tasks: generate_client_keys.yaml
+  ansible.builtin.include_tasks: generate_client_keys.yaml
   loop: "{{ peers }}"
   loop_control:
     index_var: peer_id
     loop_var: peer
 
 - name: Update peers
-  set_fact:
+  ansible.builtin.set_fact:
     peers: "{{ new_peers }}"
   no_log: true
 
 - name: Move wireguard server config
-  template:
+  ansible.builtin.template:
     src: server.conf.j2
     dest: "{{ wg_config_dir }}/wg0.conf"
     mode: u=rw,g=,o=
@@ -104,7 +104,7 @@
   notify: restart wireguard service wg0
 
 - name: Create client wireguard configs
-  template:
+  ansible.builtin.template:
     src: client.conf.j2
     dest: "{{ wg_client_config_dir }}/{{ inventory_hostname }}-{{ peer_id }}{% if peer.name %}-{{ peer.name }}{% endif %}.conf"
     mode: u=rw,g=rw,o=
@@ -116,15 +116,15 @@
     loop_var: peer
 
 - name: Reset connection
-  meta: reset_connection
+  ansible.builtin.meta: reset_connection
 
 - name: Check if wg is up
-  command: wg
+  ansible.builtin.command: wg
   become: true
   register: current_wg
   when: wg_show
 
 - name: Show wg
-  debug:
+  ansible.builtin.debug:
     msg: "{{ current_wg.stdout }}"
   when: wg_show
