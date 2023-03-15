@@ -1,3 +1,4 @@
+---
 galaxy_info:
   author: Pim van Helvoirt
   description: role to configure wireguard VPN.
