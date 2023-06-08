@@ -1,36 +1,20 @@
 ---
-- name: Assert required variables
-  ansible.builtin.include_tasks:
-    file: "assert.yaml"
-    apply:
-      delegate_to: localhost
-
 - name: Rescope variables for readability
   ansible.builtin.set_fact:
-    peers: "{{ wg_interfaces[interface].peers }}"
-    domain: "{{ wg_interfaces[interface].domain }}"
-    wg_port: "{{ wg_interfaces[interface].wg_port }}"
-    wg_show: "{{ wg_interfaces[interface].wg_show }}"
-    wg_range_v4: "{{ wg_interfaces[interface].wg_range_v4 }}"
-    wg_range_v6: "{{ wg_interfaces[interface].wg_range_v6 }}"
-    wg_config_dir: "{{ wg_interfaces[interface].wg_config_dir | default(wg_default_config_dir,
-      True) }}"
-    wg_client_config_dir: "{{ wg_interfaces[interface].wg_client_config_dir | default(wg_default_client_config_dir,
-      True) }}"
-    wg_client_config_storage_host: "{{ wg_interfaces[interface].wg_client_config_storage_host
-      }}"
-    generate_server_keys: "{{ wg_interfaces[interface].generate_server_keys | default(False,
-      True) }}"
-    generate_preshared_key: "{{ wg_interfaces[interface].generate_preshared_key |
-      default(False, True) }}"
-    wg_dns: "{{ wg_interfaces[interface].wg_dns }}"
-    wg_routed_ips: "{{ wg_interfaces[interface].wg_routed_ips }}"
-
-- name: Install wireguard
-  ansible.builtin.package:
-    name: wireguard
-    state: present
-  become: true
+    interface: "{{ wg_interface.name }}"
+    peers: "{{ wg_interface.peers }}"
+    domain: "{{ wg_interface.domain }}"
+    wg_port: "{{ wg_interface.wg_port }}"
+    wg_show: "{{ wg_interface.wg_show }}"
+    wg_range_v4: "{{ wg_interface.wg_range_v4 }}"
+    wg_range_v6: "{{ wg_interface.wg_range_v6 if wg_interface.wg_range_v6 is defined else None }}"
+    wg_config_dir: "{{ wg_interface.wg_config_dir | default(wg_default_config_dir, True) }}"
+    wg_client_config_dir: "{{ wg_interface.wg_client_config_dir | default(wg_default_client_config_dir, True) }}"
+    wg_client_config_storage_host: "{{ wg_interface.wg_client_config_storage_host }}"
+    generate_server_keys: "{{ wg_interface.generate_server_keys | default(False, True) }}"
+    generate_preshared_key: "{{ wg_interface.generate_preshared_key | default(False, True) }}"
+    wg_dns: "{{ wg_interface.wg_dns }}"
+    wg_routed_ips: "{{ wg_interface.wg_routed_ips }}"
 
 - name: Check wg is working
   ansible.builtin.command: which wg
@@ -55,7 +39,7 @@
       delegate_to: "{{ wg_client_config_storage_host }}"
 
     - name: Fail when wg command is not present
-      fail:
+      ansible.builtin.fail:
         msg: The system does not have wireguard installed, cannot continue
       when: not wg_command_controller.rc == 0
 
@@ -73,11 +57,11 @@
 
 - name: Preshared key
   ansible.builtin.include_tasks:
-    file: "preshared_key.yaml"
+    file: preshared_key.yaml
 
 - name: Generate required serverside keys
   ansible.builtin.include_tasks:
-    file: "serverside_keys.yaml"
+    file: serverside_keys.yaml
 
 - name: Check that private, public key and presharedkey were set properly
   ansible.builtin.assert:
@@ -88,7 +72,7 @@
     fail_msg: Keys are not properly defined!
     success_msg: Keys were found continuing!
 
-- name: Generate Client keys
+- name: Generate client keys
   ansible.builtin.include_tasks: generate_client_keys.yaml
   loop: "{{ peers }}"
   loop_control:
@@ -111,8 +95,7 @@
 - name: Create client wireguard configs
   ansible.builtin.template:
     src: client.conf.j2
-    dest: "{{ wg_client_config_dir }}/{{ inventory_hostname }}-{{ peer_id }}{% if
-      peer.name %}-{{ peer.name }}{% endif %}.conf"
+    dest: "{{ wg_client_config_dir }}/{{ inventory_hostname }}-{{ peer_id }}{% if peer.name %}-{{ peer.name }}{% endif %}.conf"
     mode: u=rw,g=rw,o=
   delegate_to: "{{ wg_client_config_storage_host }}"
   notify: restart wireguard service wg0
@@ -130,6 +113,7 @@
 - name: Check if wg is up
   ansible.builtin.command: wg
   become: true
+  changed_when: true
   register: current_wg
   when: wg_show
 

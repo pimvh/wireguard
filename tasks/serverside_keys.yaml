@@ -22,7 +22,7 @@
       ansible.builtin.include_tasks:
         file: find_wg_key.yaml
       vars:
-        key: "PrivateKey"
+        key: PrivateKey
         key_file: "{{ wg_config_dir }}/wg0.conf"
         key_local: false
         key_var: wg_server_private_key
@@ -43,14 +43,14 @@
       ansible.builtin.include_tasks:
         file: find_wg_key.yaml
       vars:
-        key: "PublicKey"
+        key: PublicKey
         key_file: "{{ wg_config_dir }}/wg0.conf"
         key_local: false
         key_var: wg_server_public_key
       when: not generate_server_keys
 
     - name: Generate private and public key (serverside)
-      ansible.builtin.shell: "set -o pipefail && {{ 'wg genkey | tee ' + tempfile.path + '/private.key | wg pubkey' }}"
+      ansible.builtin.shell: set -o pipefail && {{ 'wg genkey | tee ' + tempfile.path + '/private.key | wg pubkey' }}
       args:
         executable: /bin/bash
       register: wg_new_server_public_key
@@ -60,8 +60,9 @@
       when: generate_server_keys
 
     - name: Fetch wireguard private key (serverside)
-      ansible.builtin.command: "cat {{ tempfile.path }}/private.key"
+      ansible.builtin.command: cat {{ tempfile.path }}/private.key
       check_mode: false
+      changed_when: false
       become: true
       register: wg_new_server_private_key
       no_log: true

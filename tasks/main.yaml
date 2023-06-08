@@ -1,18 +1,13 @@
 ---
-- name: Verify that required variables are defined
-  ansible.builtin.assert:
-    that:
-      - "{{ item }} is defined"
-      - "{{ item }} | length > 0"
-      - "{{ item }} != None"
-    fail_msg: "{{ item }} needs to be set for the role to work"
-    success_msg: Required variable {{ item }} is defined
-  loop:
-    - wg_interfaces
+- name: Install wireguard
+  ansible.builtin.package:
+    name: wireguard
+    state: present
+  become: true
 
 - name: Make wireguard interfaces
   ansible.builtin.include_tasks:
-    file: "make_wg.yaml"
-  loop: "{{ wg_interfaces.keys() }}"
+    file: make_wg.yaml
+  loop: "{{ wg_interfaces }}"
   loop_control:
-    loop_var: interface
+    loop_var: wg_interface

@@ -3,7 +3,7 @@
 PrivateKey = {{ peer.private_key }}
 #PublicKey = {{ peer.public_key }}
 DNS = {% if peer.dns is defined %}{{ peer.dns }}{% else %}{{ wg_dns }}{% endif +%}
-Address = {{ wg_range_v4 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (2 + peer_id) | string ) | change_cidr_range_to('32')  }}, {{ wg_range_v6 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (2 + peer_id) | string ) | change_cidr_range_to('128') }}
+Address = {{ wg_range_v4 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (2 + peer_id) | string ) | change_cidr_range_to('32')  }}{% if wg_range_v6 is defined %}, {{ wg_range_v6 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (2 + peer_id) | string ) | change_cidr_range_to('128') }}{% endif %}
 
 [Peer]
 PublicKey = {{ wg_server_public_key }}

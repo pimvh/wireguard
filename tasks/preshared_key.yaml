@@ -21,6 +21,7 @@
   ansible.builtin.command: wg genpsk
   register: new_wg_preshared_key
   check_mode: false
+  changed_when: true
   when: generate_preshared_key
 
 - name: Set presharedkey as fact
