@@ -3,11 +3,6 @@
   hosts: all
 
   tasks:
-    - name: Install required python packages on controller system
-      ansible.builtin.pip:
-        requirements: role_requirements.txt
-      delegate_to: "localhost"
-
     - name: Update apt cache
       ansible.builtin.apt:
         update_cache: true
