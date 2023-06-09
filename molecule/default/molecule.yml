@@ -20,5 +20,6 @@ provisioner:
     host_vars:
       all:
         ansible_user: ansible
+      localhost:
 verifier:
   name: testinfra
