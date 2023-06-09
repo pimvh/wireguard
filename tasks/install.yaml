@@ -12,7 +12,7 @@
   loop_control:
     loop_var: wireguard_interface
 
-- name: Check command on both wireguard hosts
+- name: Check whether wireguard is present on both hosts (client and server)
   block:
     - name: Check wg is working
       ansible.builtin.command: which wg
