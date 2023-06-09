@@ -1,41 +1,18 @@
 ---
-- name: Stop wireguard service wg0
-  ansible.builtin.systemd:
-    name: wg-quick@wg0
-    state: stopped
-  become: true
-  ignore_unreachable: true
-  listen: restart wireguard service wg0
+- name: Restart wireguard service {{ wireguard_iffname }}
+  block:
+    - name: Stop wireguard service {{ wireguard_iffname }}
+      ansible.builtin.systemd:
+        name: "wg-quick@{{ wireguard_iffname }}"
+        state: started
+      become: true
+      ignore_unreachable: true
+      listen: restart wireguard service
 
-- name: Start wireguard service
-  ansible.builtin.systemd:
-    name: wg-quick@wg0
-    enabled: true
-    state: started
-  become: true
-  listen: restart wireguard service wg0
-
-- name: Stop wireguard service wg1
-  ansible.builtin.systemd:
-    name: wg-quick@wg1
-    state: stopped
-  become: true
-  ignore_unreachable: true
-  listen: restart wireguard service wg1
-
-- name: Start wireguard service
-  ansible.builtin.systemd:
-    name: wg-quick@wg1
-    enabled: true
-    state: started
-  become: true
-  listen: restart wireguard service wg1
-
-- name: Reconnect to host
-  ansible.builtin.wait_for_connection:
-    connect_timeout: 15
-    sleep: 5
-    timeout: 300
-  listen:
-    - Stop wireguard service wg0
-    - Stop wireguard service wg1
+    - name: Start wireguard service
+      ansible.builtin.systemd:
+        name: "wg-quick@{{ wireguard_iffname }}"
+        enabled: true
+        state: reloaded
+      become: true
+      listen: restart wireguard service

@@ -1,13 +1,30 @@
 ---
-- name: Install wireguard
-  ansible.builtin.package:
-    name: wireguard
-    state: present
-  become: true
-
-- name: Make wireguard interfaces
+- name: Preshared key
   ansible.builtin.include_tasks:
-    file: make_wg.yaml
-  loop: "{{ wg_interfaces }}"
-  loop_control:
-    loop_var: wg_interface
+    file: assert.yaml
+
+- name: Preshared key
+  ansible.builtin.include_tasks:
+    file: key_generation/main.yaml
+
+- name: Preshared key
+  ansible.builtin.include_tasks:
+    file: peers.yaml
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Reset connection
+  ansible.builtin.meta: reset_connection
+
+- name: Check if wg is up
+  ansible.builtin.command: wg
+  become: true
+  changed_when: true
+  register: current_wg
+  when: wireguard_show
+
+- name: Show wg
+  ansible.builtin.debug:
+    msg: "{{ current_wg.stdout }}"
+  when: wireguard_show

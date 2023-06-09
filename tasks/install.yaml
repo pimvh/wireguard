@@ -1,0 +1,40 @@
+---
+- name: Install wireguard
+  ansible.builtin.package:
+    name: wireguard
+    state: present
+  become: true
+
+- name: Make wireguard interfaces
+  ansible.builtin.include_tasks:
+    file: make_wg.yaml
+  loop: "{{ wireguard_interfaces }}"
+  loop_control:
+    loop_var: wireguard_interface
+
+- name: Check command on both wireguard hosts
+  block:
+    - name: Check wg is working
+      ansible.builtin.command: which wg
+      register: wireguard_command
+      check_mode: false
+      changed_when: false
+      ignore_errors: true
+
+    - name: Fail when wg command is not present
+      ansible.builtin.fail:
+        msg: The system does not have wireguard installed, cannot continue
+      when: not wireguard_command.rc == 0
+
+    - name: Check if wg is working on control host
+      ansible.builtin.command: which wg
+      register: wireguard_command_controller
+      check_mode: false
+      changed_when: false
+      ignore_errors: true
+      delegate_to: "{{ wireguard_client_config_storage_host }}"
+
+    - name: Fail when wg command is not present
+      ansible.builtin.fail:
+        msg: The system does not have wireguard installed, cannot continue
+      when: not wireguard_command_controller.rc == 0

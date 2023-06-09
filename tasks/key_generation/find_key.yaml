@@ -6,7 +6,7 @@
   become: "{{ true if not key_local else false }}"
   check_mode: false
   changed_when: false
-  delegate_to: "{{ wg_client_config_storage_host if key_local is sameas true else inventory_hostname }}"
+  delegate_to: "{{ wireguard_client_config_storage_host if key_local is sameas true else inventory_hostname }}"
   no_log: true
 
 - name: Set key as fact ({{ key }})
