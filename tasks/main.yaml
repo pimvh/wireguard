@@ -1,4 +1,8 @@
 ---
+- name: Install wireguard
+  ansible.builtin.include_tasks:
+    file: install.yaml
+
 - name: Preshared key
   ansible.builtin.include_tasks:
     file: key_generation/main.yaml
