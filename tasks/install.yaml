@@ -5,13 +5,6 @@
     state: present
   become: true
 
-- name: Make wireguard interfaces
-  ansible.builtin.include_tasks:
-    file: make_wg.yaml
-  loop: "{{ wireguard_interfaces }}"
-  loop_control:
-    loop_var: wireguard_interface
-
 - name: Check whether wireguard is present on both hosts (client and server)
   block:
     - name: Check wg is working
