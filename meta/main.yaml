@@ -50,26 +50,20 @@ argument_specs:
         required: true
         description: in which host the client configurations will be stored.
 
-      wireguard_check_client:
-        type: bool
-        default: true
-        required: false
-        description: whether to check that wireguard is installed on the clientside
-
       wireguard_range_v4:
         type: str
         required: true
         description: IPv4 CIDR range of wireguard interface to create
 
-      wireguard_endpoint:
-        type: str
-        required: true
-        description: DNS domain of the server
-
       wireguard_range_v6:
         type: str
         required: false
         description: IPv6 CIDR range of wireguard interface to create, optional to create v4 only VPN
+
+      wireguard_endpoint:
+        type: str
+        required: true
+        description: DNS domain of the server
 
       wireguard_port:
         type: str

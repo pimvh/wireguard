@@ -3,7 +3,7 @@
 PrivateKey = {{ peer.private_key }}
 #PublicKey = {{ peer.public_key }}
 DNS = {{ peer.dns | default(wireguard_dns) }}
-Address = {{ wireguard_range_v4 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (2 + peer_id) | string ) | change_cidr_range_to('32')  }}{% if wireguard_range_v6 is defined %}, {{ wireguard_range_v6 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (2 + peer_id) | string ) | change_cidr_range_to('128') }}{% endif +%}
+Address = {{ wireguard_range_v4 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (2 + peer_id) | string ) | change_cidr_range_to('32')  }}{% if wireguard_range_v6 %}, {{ wireguard_range_v6 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (2 + peer_id) | string ) | change_cidr_range_to('128') }}{% endif +%}
 
 [Peer]
 PublicKey = {{ wireguard_server_public_key }}

@@ -3,7 +3,6 @@ wireguard_server_config_dir: /etc/wireguard
 wireguard_client_config_dir: $HOME
 wireguard_client_config_storage_host: localhost
 
-wireguard_check_client: true
 wireguard_generate_server_keys: false
 wireguard_generate_preshared_key: false
 

@@ -1,6 +1,6 @@
 {{ ansible_managed | comment }}
 [Interface]
-Address = {{ wireguard_range_v4 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr('1') }}{% if wireguard_range_v6 is defined %}, {{ wireguard_range_v6 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr('1') }}{% endif +%}
+Address = {{ wireguard_range_v4 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr('1') }}{% if wireguard_range_v6 %}, {{ wireguard_range_v6 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr('1') }}{% endif +%}
 PrivateKey = {{ wireguard_server_private_key }}
 #PublicKey = {{ wireguard_server_public_key }}
 ListenPort = {{ wireguard_port }}
@@ -9,5 +9,5 @@ ListenPort = {{ wireguard_port }}
 [Peer]
 PresharedKey = {{ wireguard_preshared_key }}
 PublicKey = {{ peer.public_key }}
-AllowedIPs = {{ wireguard_range_v4 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (1 + loop.index) | string ) | change_cidr_range_to('32') }}{% if wireguard_range_v6 is defined %}, {{ wireguard_range_v6 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (1 + loop.index) | string ) | change_cidr_range_to('128') }}{% endif %}
+AllowedIPs = {{ wireguard_range_v4 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (1 + loop.index) | string ) | change_cidr_range_to('32') }}{% if wireguard_range_v6 %}, {{ wireguard_range_v6 | ansible.utils.ipaddr('net') | ansible.utils.ipaddr( (1 + loop.index) | string ) | change_cidr_range_to('128') }}{% endif %}
 {% endfor -%}

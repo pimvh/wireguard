@@ -3,13 +3,36 @@
   ansible.builtin.include_tasks:
     file: install.yaml
 
-- name: Preshared key
+- name: Generate required keys
   ansible.builtin.include_tasks:
     file: key_generation/main.yaml
 
-- name: Preshared key
-  ansible.builtin.include_tasks:
-    file: peers.yaml
+- name: Show
+  ansible.builtin.debug:
+    msg:
+      - "{{ wireguard_range_v4 }}"
+      - "{{ wireguard_range_v6 }}"
+
+- name: Move wireguard configuration to client and server
+  notify: restart wireguard service
+  block:
+    - name: Move wireguard server config
+      ansible.builtin.template:
+        src: server.conf.j2
+        dest: "{{ wireguard_server_config_dir }}/{{ wireguard_iffname }}.conf"
+        mode: u=rw,g=,o=
+      become: true
+
+    - name: Create client wireguard configs
+      ansible.builtin.template:
+        src: client.conf.j2
+        dest: "{{ wireguard_client_config_dir }}/{{ inventory_hostname }}-{{ peer_id }}{% if peer.name %}-{{ peer.name }}{% endif %}.conf"
+        mode: u=rw,g=rw,o=
+      delegate_to: "{{ wireguard_client_config_storage_host }}"
+      loop: "{{ wireguard_peers }}"
+      loop_control:
+        index_var: peer_id
+        loop_var: peer
 
 - name: Flush handlers
   ansible.builtin.meta: flush_handlers

@@ -35,3 +35,8 @@
   loop_control:
     index_var: peer_id
     loop_var: peer
+
+- name: Update peers
+  ansible.builtin.set_fact:
+    wireguard_peers: "{{ new_wireguard_peers }}"
+  no_log: true
