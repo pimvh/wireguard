@@ -9,7 +9,7 @@ Address = {{ wireguard_range_v4 | ansible.utils.ipaddr('net') | ansible.utils.ip
 PublicKey = {{ wireguard_server_public_key }}
 PresharedKey = {{ wireguard_preshared_key }}
 AllowedIPs = {{ peer.routed_ips | default(wireguard_routed_ips) }}
-Endpoint = {{ domain }}:{{ wireguard_port }}
+Endpoint = {{ wireguard_endpoint }}:{{ wireguard_port }}
 
 # Send periodic keepalives to ensure connection stays up behind NAT.
 PersistentKeepalive = 25
