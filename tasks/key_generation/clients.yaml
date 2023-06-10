@@ -1,13 +1,13 @@
 ---
 - name: Set wg client_config as fact
   ansible.builtin.set_fact:
-    client_config_filename: "{{ wg_client_config_dir }}/{{ inventory_hostname }}-{{ peer_id }}{% if peer.name %}-{{ peer.name }}{% endif %}.conf"
+    client_config_filename: "{{ wireguard_client_config_dir }}/{{ inventory_hostname }}-{{ peer_id }}{% if peer.name %}-{{ peer.name }}{% endif %}.conf"
 
 - name: Check if file exists
   ansible.builtin.stat:
     path: "{{ client_config_filename }}"
   register: client_config
-  delegate_to: "{{ wg_client_config_storage_host }}"
+  delegate_to: "{{ wireguard_client_config_storage_host }}"
 
 - name: Set client config generator parameters
   ansible.builtin.set_fact:
@@ -25,44 +25,45 @@
         state: directory
       check_mode: false
       changed_when: false
-      delegate_to: "{{ wg_client_config_storage_host }}"
+      delegate_to: "{{ wireguard_client_config_storage_host }}"
       register: tempfile
 
     - name: Fetch current private key and public key (client_side)
+      when: not regenerate_client_keys
       block:
         - name: Get private_key from client
           ansible.builtin.include_tasks:
-            file: find_wg_key.yaml
+            file: key_generation/find_key.yaml
           vars:
-            key: "PrivateKey"
+            key: PrivateKey
             key_file: "{{ client_config_filename }}"
             key_local: true
-            key_var: wg_client_private_key
+            key_var: wireguard_client_private_key
 
         - name: Write private key to temp file
           ansible.builtin.copy:
-            content: "{{ wg_client_private_key }}"
+            content: "{{ wireguard_client_private_key }}"
             dest: "{{ tempfile.path }}/private.key"
             mode: u=rw,g=,o=
           check_mode: false
           changed_when: false
           no_log: true
           when: not regenerate_client_keys
-          delegate_to: "{{ wg_client_config_storage_host }}"
+          delegate_to: "{{ wireguard_client_config_storage_host }}"
 
         - name: Get public_key from client
           ansible.builtin.include_tasks:
-            file: find_wg_key.yaml
+            file: key_generation/find_key.yaml
             apply:
-              delegate_to: "{{ wg_client_config_storage_host }}"
+              delegate_to: "{{ wireguard_client_config_storage_host }}"
           vars:
-            key: "PublicKey"
+            key: PublicKey
             key_file: "{{ client_config_filename }}"
             key_local: true
-            key_var: wg_client_public_key
-      when: not regenerate_client_keys
+            key_var: wireguard_client_public_key
 
     - name: Generate keys and public key (client_side)
+      when: regenerate_client_keys
       block:
         - name: Create privatekey file (clientside)
           ansible.builtin.file:
@@ -70,36 +71,35 @@
             state: touch
             mode: u=rw,g=,o=
           check_mode: false
-          delegate_to: "{{ wg_client_config_storage_host }}"
+          delegate_to: "{{ wireguard_client_config_storage_host }}"
 
         - name: Generate private and public key (clientside)
-          ansible.builtin.shell: 'set -o pipefail && {{ "wg genkey | tee " + tempfile.path + "/private.key | wg pubkey" }}'
+          ansible.builtin.shell: set -o pipefail && {{ "wg genkey | tee " + tempfile.path + "/private.key | wg pubkey" }}
           args:
             executable: /bin/bash
-          register: new_wg_client_public_key
+          register: new_wireguard_client_public_key
           check_mode: false
-          delegate_to: "{{ wg_client_config_storage_host }}"
-          changed_when: new_wg_client_public_key != ""
+          delegate_to: "{{ wireguard_client_config_storage_host }}"
+          changed_when: new_wireguard_client_public_key != ""
 
         - name: Save client public key
           ansible.builtin.set_fact:
-            wg_client_public_key: "{{ new_wg_client_public_key.stdout }}"
+            wireguard_client_public_key: "{{ new_wireguard_client_public_key.stdout }}"
 
         - name: Fetch wireguard client private key
           ansible.builtin.command: cat {{ tempfile.path }}/private.key
-          register: wg_new_client_private_key
+          register: wireguard_new_client_private_key
           no_log: true
           when: regenerate_client_keys
           check_mode: false
           changed_when: false
-          delegate_to: "{{ wg_client_config_storage_host }}"
+          delegate_to: "{{ wireguard_client_config_storage_host }}"
 
         - name: Set client private key as fact
           ansible.builtin.set_fact:
-            wg_client_private_key: "{{ wg_new_client_private_key.stdout }}"
+            wireguard_client_private_key: "{{ wireguard_new_client_private_key.stdout }}"
           no_log: true
-          when: wg_new_client_private_key.stdout is defined
-      when: regenerate_client_keys
+          when: wireguard_new_client_private_key.stdout is defined
 
   always:
     - name: Remove temporary directory (clientside)
@@ -108,14 +108,14 @@
         state: absent
       check_mode: false
       changed_when: false
-      delegate_to: "{{ wg_client_config_storage_host }}"
+      delegate_to: "{{ wireguard_client_config_storage_host }}"
 
 - name: Append client private and public key to the current item
   ansible.builtin.set_fact:
-    new_peer: "{{ peer | combine({ 'private_key' : wg_client_private_key, 'public_key' : wg_client_public_key }) }}"
+    new_peer: "{{ peer | combine({'private_key': wireguard_client_private_key, 'public_key': wireguard_client_public_key}) }}"
   no_log: true
 
 - name: Append new peer to list
   ansible.builtin.set_fact:
-    new_peers: "{{ new_peers | default([]) + [new_peer] }}"
+    new_wireguard_peers: "{{ new_peers | default([]) + [new_peer] }}"
   no_log: true

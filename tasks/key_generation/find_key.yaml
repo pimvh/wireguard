@@ -1,19 +1,23 @@
 ---
-- name: Get {{ key }} key from machine
-  ansible.builtin.command: "grep -i {{ key }} {{ key_file }}"
+- name: Get key from machine ({{ key }})
+  ansible.builtin.command:
+    cmd: "grep -i {{ key }} {{ key_file }}"
   register: found_key
   become: "{{ true if not key_local else false }}"
   check_mode: false
   changed_when: false
-  delegate_to: "{{ wg_client_config_storage_host if key_local }}"
+  delegate_to: "{{ wireguard_client_config_storage_host if key_local is sameas true else inventory_hostname }}"
   no_log: true
 
-- name: Set {{ key }} key as fact
+- name: Set key as fact ({{ key }})
   ansible.builtin.set_fact:
     found_key: '{{ found_key.stdout | regex_search(key | string + "\s?=\s?([a-zA-Z0-9+/]*=)", "\1") | first }}'
   no_log: true
 
-- name: Set {{ key }} key as fact
+- name: Set key as fact ({{ key }})
   ansible.builtin.set_fact: >
     {{ key_var }}={{ found_key }}
   no_log: true
+  # no other option, only free-form works
+  tags:
+    - skip_ansible_lint

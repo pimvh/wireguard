@@ -4,7 +4,7 @@ galaxy_info:
   description: role to configure wireguard VPN.
 
   license: GPL-3.0-only
-  min_ansible_version: 2.1
+  min_ansible_version: "2.14"
 
   platforms:
     - name: Ubuntu
@@ -20,3 +20,103 @@ galaxy_info:
     - dualstack
 
 dependencies: []
+argument_specs:
+  main:
+    short_description: The main entry point for the wireguard role.
+    description: |
+      This entrypoint configures a wireguard VPN on the system.
+    options:
+
+      wireguard_iffname:
+        type: str
+        default: wg0
+        required: false
+        description: the name of the wireguard interface
+
+      wireguard_server_config_dir:
+        type: str
+        default: /etc/wireguard
+        required: false
+        description: in which directory to configure wireguard (serverside)
+
+      wireguard_client_config_dir:
+        type: str
+        default: $HOME
+        required: false
+        description: in which directory to save wireguard configurations (clientside)
+
+      wireguard_client_config_storage_host:
+        type: str
+        required: true
+        description: in which host the client configurations will be stored.
+
+      wireguard_range_v4:
+        type: str
+        required: true
+        description: IPv4 CIDR range of wireguard interface to create
+
+      wireguard_range_v6:
+        type: str
+        required: false
+        description: IPv6 CIDR range of wireguard interface to create, optional to create v4 only VPN
+
+      wireguard_endpoint:
+        type: str
+        required: true
+        description: DNS domain of the server
+
+      wireguard_port:
+        type: str
+        required: true
+        description: port to expose wireguard interface on
+
+      wireguard_show:
+        type: bool
+        default: true
+        required: false
+        description: |
+          whether to display the final wireguard interface configuration,
+          makes the role not idempotent anymore
+
+      wireguard_generate_server_keys:
+        type: bool
+        required: true
+        description: boolean to indicate whether the serverside keys will be (re)generated
+
+      wireguard_generate_preshared_key:
+        type: bool
+        required: true
+        description: boolean to indicate whether the preshared key will be (re)generated
+
+      wireguard_dns:
+        type: str
+        required: true
+        description: DNS which will be used for this wireguard interface
+
+      wireguard_routed_ips:
+        type: str
+        required: true
+        description: IP addresses which are allowed to be routed over this VPN interface.
+
+      wireguard_peers:
+        type: list
+        elements: dict
+        required: true
+        description: list of peers associated with this interface
+        options:
+          name:
+            type: str
+            required: true
+            description: name of the peer, used as identifier in files and for filename
+            routed_ips:
+              type: str
+              required: false
+              description: which IPs are allowed to be routed over the VPN interface, defaults to interface value
+            dns:
+              type: str
+              required: false
+              description: which DNS is used for this VPN interface, defaults to interface value
+            force:
+              type: bool
+              required: false
+              description: whether to force recreate this peer, overwriting keys

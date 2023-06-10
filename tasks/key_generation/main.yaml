@@ -1,0 +1,42 @@
+---
+- name: Check if wg config file exists
+  ansible.builtin.stat:
+    path: "{{ wireguard_server_config_dir }}/{{ wireguard_iffname }}.conf"
+  register: wireguard_config_file
+  become: true
+
+- name: When no config file is found, force key generation
+  ansible.builtin.set_fact:
+    wireguard_generate_preshared_key: true
+    wireguard_generate_server_keys: true
+  when: not wireguard_config_file.stat.exists
+
+- name: Generate preshared key, if required
+  ansible.builtin.include_tasks:
+    file: key_generation/preshared.yaml
+
+- name: Generate serverside key, if required
+  ansible.builtin.include_tasks:
+    file: key_generation/serverside.yaml
+
+- name: Check that private, public key and presharedkey were set properly
+  ansible.builtin.assert:
+    that:
+      - wireguard_server_private_key
+      - wireguard_server_public_key
+      - wireguard_preshared_key
+    fail_msg: Keys are not properly defined!
+    success_msg: Keys were found continuing!
+
+- name: Generate client keys
+  ansible.builtin.include_tasks:
+    file: key_generation/clients.yaml
+  loop: "{{ wireguard_peers }}"
+  loop_control:
+    index_var: peer_id
+    loop_var: peer
+
+- name: Update peers
+  ansible.builtin.set_fact:
+    wireguard_peers: "{{ new_wireguard_peers }}"
+  no_log: true

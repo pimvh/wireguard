@@ -1,5 +1,5 @@
-# terraform managed
 ---
+# terraform managed
 dependency:
   name: galaxy
   options:
@@ -7,8 +7,8 @@ dependency:
 driver:
   name: docker
 platforms:
-  - name: "${IMAGE_NAME}"
-    image: "${REGISTRY}/${IMAGE_ID}:latest"
+  - name: "${IMAGE_NAME:-ubuntu-jammy-jellyfish}"
+    image: "${REGISTRY:-quay.io/pimvh}/${IMAGE_ID:-molecule-ubuntu-jammy-jellyfish}:latest"
     tmpfs:
       - /run
       - /tmp
@@ -20,5 +20,6 @@ provisioner:
     host_vars:
       all:
         ansible_user: ansible
+      localhost:
 verifier:
   name: testinfra

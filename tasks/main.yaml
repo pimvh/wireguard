@@ -1,18 +1,47 @@
 ---
-- name: Verify that required variables are defined
-  ansible.builtin.assert:
-    that:
-      - "{{ item }} is defined"
-      - "{{ item }} | length > 0"
-      - "{{ item }} != None"
-    fail_msg: "{{ item }} needs to be set for the role to work"
-    success_msg: Required variable {{ item }} is defined
-  loop:
-    - wg_interfaces
-
-- name: Make wireguard interfaces
+- name: Install wireguard
   ansible.builtin.include_tasks:
-    file: "make_wg.yaml"
-  loop: "{{ wg_interfaces.keys() }}"
-  loop_control:
-    loop_var: interface
+    file: install.yaml
+
+- name: Generate required keys
+  ansible.builtin.include_tasks:
+    file: key_generation/main.yaml
+
+- name: Move wireguard configuration to client and server
+  notify: restart wireguard service
+  block:
+    - name: Move wireguard server config
+      ansible.builtin.template:
+        src: server.conf.j2
+        dest: "{{ wireguard_server_config_dir }}/{{ wireguard_iffname }}.conf"
+        mode: u=rw,g=,o=
+      become: true
+
+    - name: Create client wireguard configs
+      ansible.builtin.template:
+        src: client.conf.j2
+        dest: "{{ wireguard_client_config_dir }}/{{ inventory_hostname }}-{{ peer_id }}{% if peer.name %}-{{ peer.name }}{% endif %}.conf"
+        mode: u=rw,g=rw,o=
+      delegate_to: "{{ wireguard_client_config_storage_host }}"
+      loop: "{{ wireguard_peers }}"
+      loop_control:
+        index_var: peer_id
+        loop_var: peer
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Reset connection
+  ansible.builtin.meta: reset_connection
+
+- name: Check if wg is up
+  ansible.builtin.command: wg
+  become: true
+  changed_when: true
+  register: current_wg
+  when: wireguard_show
+
+- name: Show wg
+  ansible.builtin.debug:
+    msg: "{{ current_wg.stdout }}"
+  when: wireguard_show

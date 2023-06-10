@@ -1,0 +1,88 @@
+---
+- name: Create requested serverside keys
+  block:
+    - name: Create and change permission on temporary key directory (serverside)
+      ansible.builtin.tempfile:
+        state: directory
+      become: true
+      check_mode: false
+      changed_when: false
+      register: tempfile
+
+    - name: Create privatekey file (serverside)
+      ansible.builtin.file:
+        name: "{{ tempfile.path }}/private.key"
+        state: touch
+        mode: u=rw,g=,o=
+      check_mode: false
+      changed_when: false
+      become: true
+
+    - name: Get current private key
+      when: not wireguard_generate_server_keys
+      block:
+        - name: Get privatekey from server
+          ansible.builtin.include_tasks:
+            file: key_generation/find_key.yaml
+          vars:
+            key: PrivateKey
+            key_file: "{{ wireguard_server_config_dir }}/{{ wireguard_iffname }}.conf"
+            key_local: false
+            key_var: wireguard_server_private_key
+
+        - name: Write private key to temp file
+          ansible.builtin.copy:
+            content: "{{ wireguard_server_private_key }}"
+            dest: "{{ tempfile.path }}/private.key"
+            mode: u=rw,g=,o=
+          become: true
+          check_mode: false
+          changed_when: false
+          no_log: true
+
+        - name: Get PublicKey from server
+          ansible.builtin.include_tasks:
+            file: key_generation/find_key.yaml
+          vars:
+            key: PublicKey
+            key_file: "{{ wireguard_server_config_dir }}/{{ wireguard_iffname }}.conf"
+            key_local: false
+            key_var: wireguard_server_public_key
+
+    - name: Generate new serverside key
+      when: wireguard_generate_server_keys
+      block:
+        - name: Generate private and public key (serverside)
+          ansible.builtin.shell: set -o pipefail && {{ 'wg genkey | tee ' + tempfile.path + '/private.key | wg pubkey' }}
+          args:
+            executable: /bin/bash
+          register: wireguard_new_server_public_key
+          become: true
+          check_mode: false
+          changed_when: wireguard_new_server_public_key.stdout != ""
+
+        - name: Fetch wireguard private key (serverside)
+          ansible.builtin.command: cat {{ tempfile.path }}/private.key
+          check_mode: false
+          changed_when: false
+          become: true
+          register: wireguard_new_server_private_key
+          no_log: true
+
+        - name: Save public key
+          ansible.builtin.set_fact:
+            wireguard_server_public_key: "{{ wireguard_new_server_public_key.stdout }}"
+
+        - name: Set new private key as fact
+          ansible.builtin.set_fact:
+            wireguard_server_private_key: "{{ wireguard_new_server_private_key.stdout }}"
+          no_log: true
+
+  always:
+    - name: Remove temporary directory (serverside)
+      ansible.builtin.file:
+        name: "{{ tempfile.path }}"
+        state: absent
+      check_mode: false
+      changed_when: false
+      become: true

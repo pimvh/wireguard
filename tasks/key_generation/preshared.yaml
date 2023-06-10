@@ -1,0 +1,30 @@
+---
+- name: Get preshared key from server
+  when: not wireguard_generate_preshared_key
+  block:
+    - name: Fetch preshared key
+      ansible.builtin.command: grep -i PresharedKey {{ wireguard_server_config_dir }}/{{ wireguard_iffname }}.conf
+      register: wireguard_preshared_key
+      become: true
+      check_mode: false
+      changed_when: false
+      no_log: true
+
+    - name: Set current presharedkey as fact
+      ansible.builtin.set_fact:
+        wireguard_preshared_key: '{{ wireguard_preshared_key.stdout | regex_search("PresharedKey\s?=\s?([a-zA-Z0-9+/]*=)", "\1") | first }}'
+
+- name: Generate preshared key
+  when: wireguard_generate_preshared_key
+  block:
+    - name: Generate presharedkey (serverside)
+      ansible.builtin.command:
+        cmd: wg genpsk
+      register: new_wireguard_preshared_key
+      changed_when: true
+      check_mode: false
+
+    - name: Set newly generated key as fact
+      ansible.builtin.set_fact:
+        wireguard_preshared_key: "{{ new_wireguard_preshared_key.stdout }}"
+      no_log: true
