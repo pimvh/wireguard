@@ -18,6 +18,6 @@
   ansible.builtin.set_fact: >
     {{ key_var }}={{ found_key }}
   no_log: true
-  # no other option, only freeform works
+  # no other option, only free-form works
   tags:
     - skip_ansible_lint

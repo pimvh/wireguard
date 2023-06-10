@@ -19,7 +19,7 @@
       become: true
 
     - name: Get current private key
-      when: not generate_server_keys
+      when: not wireguard_generate_server_keys
       block:
         - name: Get privatekey from server
           ansible.builtin.include_tasks:
@@ -50,7 +50,7 @@
             key_var: wireguard_server_public_key
 
     - name: Generate new serverside key
-      when: generate_server_keys
+      when: wireguard_generate_server_keys
       block:
         - name: Generate private and public key (serverside)
           ansible.builtin.shell: set -o pipefail && {{ 'wg genkey | tee ' + tempfile.path + '/private.key | wg pubkey' }}
