@@ -1,9 +1,16 @@
 ---
-- name: Install wireguard
+- name: Install wireguard on server
   ansible.builtin.package:
     name: wireguard
     state: present
   become: true
+
+- name: Install wireguard on client
+  ansible.builtin.package:
+    name: wireguard
+    state: present
+  become: true
+  delegate_to: "{{ wireguard_client_config_storage_host }}"
 
 - name: Check whether wireguard is present on both hosts (client and server)
   block:
