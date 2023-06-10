@@ -7,12 +7,6 @@
   ansible.builtin.include_tasks:
     file: key_generation/main.yaml
 
-- name: Show
-  ansible.builtin.debug:
-    msg:
-      - "{{ wireguard_range_v4 }}"
-      - "{{ wireguard_range_v6 }}"
-
 - name: Move wireguard configuration to client and server
   notify: restart wireguard service
   block:

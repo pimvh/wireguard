@@ -1,15 +1,14 @@
 ---
 wireguard_default_client_config_dir: $HOME
-
+wireguard_client_config_dir: $HOME
+wireguard_client_config_storage_host: localhost
 # Github actions does not support IPv6
 
 wireguard_iffname: "wg0"
 wireguard_endpoint: "test.example.com"
 wireguard_range_v4: 10.1.1.0/25
 wireguard_port: 51234
-wireguard_show: true
-wireguard_client_config_dir: $HOME
-wireguard_client_config_storage_host: localhost
+
 generate_server_keys: false
 generate_preshared_key: false
 wireguard_dns: >

@@ -74,7 +74,9 @@ argument_specs:
         type: bool
         default: true
         required: false
-        description: whether to display the wireguard interface configuration
+        description: |
+          whether to display the final wireguard interface configuration,
+          makes the role not idempotent anymore
 
       wireguard_generate_server_keys:
         type: bool
