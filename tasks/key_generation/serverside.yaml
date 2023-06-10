@@ -72,7 +72,6 @@
         - name: Save public key
           ansible.builtin.set_fact:
             wireguard_server_public_key: "{{ wireguard_new_server_public_key.stdout }}"
-          when: generate_server_keys
 
         - name: Set new private key as fact
           ansible.builtin.set_fact:
