@@ -117,5 +117,5 @@
 
 - name: Append new peer to list
   ansible.builtin.set_fact:
-    new_wireguard_peers: "{{ new_peers | default([]) + [new_peer] }}"
+    new_wireguard_peers: "{{ new_wireguard_peers | default([]) + [new_peer] }}"
   no_log: true

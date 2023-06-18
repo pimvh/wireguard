@@ -50,6 +50,12 @@ argument_specs:
         required: true
         description: in which host the client configurations will be stored.
 
+      wireguard_provision_client:
+        type: bool
+        required: false
+        default: true
+        description: whether to install wireguard on the client too
+
       wireguard_range_v4:
         type: str
         required: true
