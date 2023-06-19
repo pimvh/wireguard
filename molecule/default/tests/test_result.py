@@ -24,4 +24,5 @@ def test_peer_present(host):
     """test that the peer is present in the wireguard config file"""
 
     with host.sudo():
-        assert host.file("/etc/wireguard/wg0.conf").contains("test-peer")
+        assert host.file("/etc/wireguard/wg0.conf").contains("test-peer1")
+        assert host.file("/etc/wireguard/wg0.conf").contains("test-peer2")

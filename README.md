@@ -19,15 +19,17 @@ pip3 install netaddr
 
 Set the variables as shown in defined.
 
-```
+```yaml
 
 ---
 wireguard_server_config_dir: /etc/wireguard
 wireguard_client_config_dir: $HOME
 wireguard_client_config_storage_host: localhost
 
+
 wireguard_generate_server_keys: false
 wireguard_generate_preshared_key: false
+wireguard_provision_client: true
 wireguard_show: false
 
 wireguard_iffname: "wg0"
@@ -37,7 +39,6 @@ wireguard_range_v6: ""
 wireguard_port: ""
 wireguard_dns: ""
 wireguard_routed_ips: ""
-wireguard_allow_inet: true
 wireguard_peers: []
 #   - name: harry
 #     routed_ips: 0.0.0.0/0, ::/0         # the IPv4/IPv6 addresses you would like to route (if this is not defined wg_routed_ips is used)
@@ -54,7 +55,7 @@ ansible.utils.ipaddr
 
 # Example playbook
 
-```
+```yaml
 hosts:
   - foo
 roles:
