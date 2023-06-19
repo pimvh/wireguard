@@ -8,6 +8,7 @@
     sysctl_file: /etc/sysctl.conf
     reload: true
   when: wireguard_range_v4
+  become: true
 
 - name: Enable IPv6 forwarding
   ansible.posix.sysctl:
@@ -18,3 +19,4 @@
     sysctl_file: /etc/sysctl.conf
     reload: true
   when: wireguard_range_v6
+  become: true
