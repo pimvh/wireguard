@@ -1,3 +1,4 @@
+![Molecule test](https://github.com/pimvh/wireguard/actions/workflows/test.yaml/badge.svg)
 # Requirements
 
 1. Ansible installed:
