@@ -32,6 +32,8 @@ wireguard_generate_preshared_key: false
 wireguard_provision_client: true
 wireguard_show: false
 
+wireguard_configure_sysctl: true
+
 wireguard_iffname: "wg0"
 wireguard_endpoint: ""
 wireguard_range_v4: ""

@@ -1,0 +1,22 @@
+---
+- name: Enable IPv4 forwarding
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: true
+    state: present
+    sysctl_file: /etc/sysctl.conf
+    reload: true
+  when: wireguard_range_v4
+  become: true
+
+- name: Enable IPv6 forwarding
+  ansible.posix.sysctl:
+    name: net.ipv6.conf.all.forwarding
+    value: '1'
+    sysctl_set: true
+    state: present
+    sysctl_file: /etc/sysctl.conf
+    reload: true
+  when: wireguard_range_v6
+  become: true

@@ -45,6 +45,12 @@ argument_specs:
         required: false
         description: in which directory to save wireguard configurations (clientside)
 
+      wireguard_configure_sysctl:
+        type: bool
+        default: true
+        required: false
+        description: whether to configure packet forwarding in sysctl
+
       wireguard_client_config_storage_host:
         type: str
         required: true

@@ -28,6 +28,10 @@
         index_var: peer_id
         loop_var: peer
 
+- name: Configure sysclt
+  ansible.builtin.include_tasks:
+    file: sysctl.yaml
+
 - name: Flush handlers
   ansible.builtin.meta: flush_handlers
 
