@@ -120,15 +120,15 @@ argument_specs:
             type: str
             required: true
             description: name of the peer, used as identifier in files and for filename
-            routed_ips:
-              type: str
-              required: false
-              description: which IPs are allowed to be routed over the VPN interface, defaults to interface value
-            dns:
-              type: str
-              required: false
-              description: which DNS is used for this VPN interface, defaults to interface value
-            force:
-              type: bool
-              required: false
-              description: whether to force recreate this peer, overwriting keys
+          routed_ips:
+            type: str
+            required: false
+            description: which IPs are allowed to be routed over the VPN interface, defaults to interface value
+          dns:
+            type: str
+            required: false
+            description: which DNS is used for this VPN interface, defaults to interface value
+          force:
+            type: bool
+            required: false
+            description: whether to force recreate this peer, overwriting keys
